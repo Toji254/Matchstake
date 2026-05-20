@@ -9,6 +9,7 @@ export const siteConfig = {
 
 export const navigationConfig = {
   brandName: "MATCHSTAKE",
+  logoPath: "/logo.png",
   links: [
     { label: "MATCHES", href: "/matches" },
     { label: "STADIUMS", href: "/#facilities" },

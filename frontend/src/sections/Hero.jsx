@@ -17,7 +17,14 @@ export default function Hero() {
     <section id="hero" className="hero-split">
       {/* Global Navigation — spans across both split panels */}
       <nav className="hero-nav">
-        <Link to="/" className="hero-nav-brand">
+        <Link to="/" className="hero-nav-brand" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {navigationConfig.logoPath && (
+            <img 
+              src={navigationConfig.logoPath} 
+              alt="Logo" 
+              style={{ width: '32px', height: '32px', borderRadius: '4px' }} 
+            />
+          )}
           {navigationConfig.brandName}
         </Link>
 
