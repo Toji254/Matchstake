@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="frontend/public/logo.png" width="128" alt="MatchStake Logo">
+</p>
+
 # MatchStake — OKX X Cup Hackathon
 
 ![MatchStake Cover](https://via.placeholder.com/1200x600/000000/FFFFFF?text=MATCHSTAKE+WORLD+CUP+2026)
