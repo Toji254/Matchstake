@@ -3,8 +3,8 @@
 
 export const siteConfig = {
   language: "en",
-  siteTitle: "MatchStake — World Cup 2026 Social Staking",
-  siteDescription: "Create watch party rooms, predict scores, and stake OKB with friends on X Layer. Built for the OKX X Cup Hackathon.",
+  siteTitle: "MatchStake — World Cup 2026 Social Staking via OKX OS",
+  siteDescription: "Deploys outcome prediction markets via Exchange OS and compiles agentic NLP skills via Onchain OS on X Layer. Built for the OKX X Cup Hackathon.",
 };
 
 export const navigationConfig = {
@@ -12,15 +12,18 @@ export const navigationConfig = {
   logoPath: "/logo.png",
   links: [
     { label: "MATCHES", href: "/matches" },
+    { label: "AGENT OPS", href: "/agent-ops" },
+    { label: "SQUADS", href: "/squads" },
     { label: "STADIUMS", href: "/#facilities" },
     { label: "MATCHDAY", href: "/#observation" },
     { label: "LEADERBOARD", href: "/leaderboard" },
     { label: "SWAP", href: "/swap" },
+    { label: "SUBMISSION", href: "/submission" },
   ],
 };
 
 export const heroConfig = {
-  eyebrow: "OKX X CUP HACKATHON // X LAYER MAINNET",
+  eyebrow: "EXCHANGE OS & ONCHAIN OS // OKX X CUP HACKATHON",
   titleLines: [
     "MATCH",
     "STAKE",

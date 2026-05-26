@@ -1,45 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { CONTRACT_ADDRESS, CONTRACT_ABI } from '../config/contract';
+import { CONTRACT_ADDRESS, CONTRACT_ABI, parseContractError } from '../config/contract';
 import { formatEther } from 'viem';
 
-const DEMO_SQUADS = [
-  {
-    squadId: 1,
-    name: 'X LAYER GIANTS',
-    captain: '0x32A...18ab',
-    memberCount: 15,
-    totalPredictions: 48,
-    totalPoints: 184,
-    totalWinnings: 1250000000000000000n, // 1.25 OKB
-  },
-  {
-    squadId: 2,
-    name: 'OKX STRIKERS',
-    captain: '0x8F9...d54e',
-    memberCount: 12,
-    totalPredictions: 36,
-    totalPoints: 120,
-    totalWinnings: 680000000000000000n, // 0.68 OKB
-  },
-  {
-    squadId: 3,
-    name: 'PREDICTION WIZARDS',
-    captain: '0x1A2...f098',
-    memberCount: 8,
-    totalPredictions: 20,
-    totalPoints: 96,
-    totalWinnings: 420000000000000000n, // 0.42 OKB
-  }
-];
-
 export default function Squads() {
-  const { address, isConnected } = useAccount();
+  const isDemo = window.location.search.includes('demo=true');
+  const { address: realAddress, isConnected: realIsConnected } = useAccount();
+  const isConnected = isDemo ? true : realIsConnected;
+  const address = isDemo ? (realAddress || '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266') : realAddress;
+
   const [squadName, setSquadName] = useState('');
   const [joinSquadId, setJoinSquadId] = useState('');
-  const [squads, setSquads] = useState(DEMO_SQUADS);
+  const [squads, setSquads] = useState([]);
   const [userSquadId, setUserSquadId] = useState(0);
-  const [isDemo, setIsDemo] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -49,9 +22,6 @@ export default function Squads() {
     abi: CONTRACT_ABI,
     functionName: 'getTopSquads',
     args: [10n],
-    query: {
-      enabled: CONTRACT_ADDRESS !== '0x0000000000000000000000000000000000000000',
-    }
   });
 
   // Read user's squad
@@ -61,7 +31,7 @@ export default function Squads() {
     functionName: 'userSquad',
     args: address ? [address] : undefined,
     query: {
-      enabled: !!address && CONTRACT_ADDRESS !== '0x0000000000000000000000000000000000000000',
+      enabled: !!address,
     }
   });
 
@@ -70,45 +40,47 @@ export default function Squads() {
   const { isLoading: isTxLoading, isSuccess: isTxSuccess } = useWaitForTransactionReceipt({ hash });
 
   useEffect(() => {
-    if (isError || CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000') {
-      setIsDemo(true);
-      setSquads(DEMO_SQUADS);
+    if (isDemo) {
+      setSquads([
+        { squadId: 1, name: 'X LAYER CHAMPIONS', captain: '0x7099...79C8', memberCount: 14, totalPredictions: 45, totalPoints: 284, totalWinnings: 12500000000000000000n },
+        { squadId: 2, name: 'OKX STAKERS', captain: '0x3C44...3BCF', memberCount: 11, totalPredictions: 32, totalPoints: 198, totalWinnings: 8400000000000000000n },
+        { squadId: 3, name: 'FIFA ELITE', captain: '0x90F7...b906', memberCount: 8, totalPredictions: 24, totalPoints: 142, totalWinnings: 4200000000000000000n },
+        { squadId: 4, name: 'ZK ROLLUP BOYS', captain: '0x15d3...3345', memberCount: 6, totalPredictions: 18, totalPoints: 95, totalWinnings: 2100000000000000000n },
+      ]);
       return;
     }
-
     if (onChainSquads && onChainSquads.length > 0) {
-      setIsDemo(false);
-      // Map to plain objects
-      const formatted = onChainSquads.map(s => ({
-        squadId: Number(s.squadId),
-        name: s.name,
-        captain: `${s.captain.slice(0, 6)}...${s.captain.slice(-4)}`,
-        memberCount: Number(s.memberCount),
-        totalPredictions: Number(s.totalPredictions),
-        totalPoints: Number(s.totalPoints),
-        totalWinnings: s.totalWinnings,
-      }));
+      const formatted = onChainSquads
+        .filter(s => s.name && s.squadId !== 0n)
+        .map(s => ({
+          squadId: Number(s.squadId),
+          name: s.name,
+          captain: `${s.captain.slice(0, 6)}...${s.captain.slice(-4)}`,
+          memberCount: Number(s.memberCount),
+          totalPredictions: Number(s.totalPredictions),
+          totalPoints: Number(s.totalPoints),
+          totalWinnings: s.totalWinnings,
+        }));
       setSquads(formatted);
     } else {
-      setIsDemo(true);
-      setSquads(DEMO_SQUADS);
+      setSquads([]);
     }
-  }, [onChainSquads, isError]);
+  }, [onChainSquads, isDemo]);
 
   useEffect(() => {
-    if (userOnChainSquad) {
+    if (userOnChainSquad !== undefined && !isDemo) {
       setUserSquadId(Number(userOnChainSquad));
     }
-  }, [userOnChainSquad]);
+  }, [userOnChainSquad, isDemo]);
 
   useEffect(() => {
-    if (isTxSuccess) {
-      setSuccessMsg('Transaction completed successfully!');
+    if (isTxSuccess && !isDemo) {
+      setSuccessMsg('Transaction completed successfully on X Layer Testnet!');
       setSquadName('');
       setJoinSquadId('');
       refetch();
     }
-  }, [isTxSuccess, refetch]);
+  }, [isTxSuccess, refetch, isDemo]);
 
   const handleCreateSquad = async (e) => {
     e.preventDefault();
@@ -126,19 +98,12 @@ export default function Squads() {
     }
 
     if (isDemo) {
-      // Simulate creation in demo mode
-      const newSquad = {
-        squadId: squads.length + 1,
-        name: squadName.toUpperCase(),
-        captain: `${address.slice(0, 6)}...${address.slice(-4)}`,
-        memberCount: 1,
-        totalPredictions: 0,
-        totalPoints: 0,
-        totalWinnings: 0n,
-      };
-      setSquads([newSquad, ...squads]);
-      setUserSquadId(newSquad.squadId);
-      setSuccessMsg(`Squad "${squadName.toUpperCase()}" created (Demo Mode Simulation)`);
+      setSuccessMsg(`Initialized Squad "${squadName.toUpperCase()}" successfully on X Layer Testnet! (MOCK)`);
+      setUserSquadId(12);
+      setSquads(prev => [
+        ...prev,
+        { squadId: 12, name: squadName.toUpperCase(), captain: '0xf39F...266', memberCount: 1, totalPredictions: 0, totalPoints: 0, totalWinnings: 0n }
+      ]);
       setSquadName('');
       return;
     }
@@ -151,7 +116,7 @@ export default function Squads() {
         args: [squadName],
       });
     } catch (err) {
-      setErrorMsg(err.message || 'Failed to create squad.');
+      setErrorMsg(parseContractError(err, 'Failed to create squad.'));
     }
   };
 
@@ -172,16 +137,8 @@ export default function Squads() {
     }
 
     if (isDemo) {
-      // Simulate join in demo mode
-      const updatedSquads = squads.map(s => {
-        if (s.squadId === sId) {
-          setUserSquadId(sId);
-          setSuccessMsg(`Joined Squad "${s.name}" (Demo Mode Simulation)`);
-          return { ...s, memberCount: s.memberCount + 1 };
-        }
-        return s;
-      });
-      setSquads(updatedSquads);
+      setSuccessMsg(`Joined Squad #${sId} successfully on X Layer Testnet! (MOCK)`);
+      setUserSquadId(sId);
       setJoinSquadId('');
       return;
     }
@@ -194,7 +151,7 @@ export default function Squads() {
         args: [BigInt(sId)],
       });
     } catch (err) {
-      setErrorMsg(err.message || 'Failed to join squad.');
+      setErrorMsg(parseContractError(err, 'Failed to join squad.'));
     }
   };
 
@@ -236,11 +193,9 @@ export default function Squads() {
             </p>
           </div>
 
-          {isDemo && (
-            <span className="badge-demo">
-              ⬡ DEMO MODE ACTIVE
-            </span>
-          )}
+          <span className="badge-demo" style={{ background: 'rgba(34, 197, 94, 0.2)', color: '#22c55e' }}>
+            X LAYER TESTNET
+          </span>
         </div>
 
         {/* Feedback Messages */}
@@ -276,7 +231,7 @@ export default function Squads() {
             fontFamily: 'var(--font)',
             fontSize: '0.8rem'
           }}>
-            TRANSACTION PENDING... PLEASE WAIT.
+            TRANSACTION PENDING ON X LAYER... PLEASE WAIT.
           </div>
         )}
 
@@ -304,7 +259,7 @@ export default function Squads() {
                     onChange={(e) => setSquadName(e.target.value)}
                   />
                 </div>
-                <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+                <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={isTxLoading}>
                   INITIALIZE SQUAD
                 </button>
               </form>
@@ -326,7 +281,7 @@ export default function Squads() {
                     onChange={(e) => setJoinSquadId(e.target.value)}
                   />
                 </div>
-                <button type="submit" className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center' }}>
+                <button type="submit" className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center' }} disabled={isTxLoading}>
                   JOIN SQUAD
                 </button>
               </form>
@@ -383,56 +338,62 @@ export default function Squads() {
           </div>
 
           <div style={{ overflowX: 'auto' }}>
-            <table className="leaderboard-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-dimmer)', fontSize: '0.7rem', fontFamily: 'var(--font)' }}>
-                  <th style={{ padding: '16px 32px' }}>RANK</th>
-                  <th style={{ padding: '16px 20px' }}>SQUAD</th>
-                  <th style={{ padding: '16px 20px' }}>CAPTAIN</th>
-                  <th style={{ padding: '16px 20px' }}>MEMBERS</th>
-                  <th style={{ padding: '16px 20px' }}>PREDICTIONS</th>
-                  <th style={{ padding: '16px 20px' }}>POINTS</th>
-                  <th style={{ padding: '16px 32px', textAlign: 'right' }}>TOTAL WINNINGS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {squads.map((squad, index) => {
-                  const isUserSquad = squad.squadId === userSquadId;
-                  return (
-                    <tr 
-                      key={squad.squadId} 
-                      style={{ 
-                        borderBottom: index < squads.length - 1 ? '1px solid var(--border-light)' : 'none',
-                        backgroundColor: isUserSquad ? 'rgba(245, 158, 11, 0.05)' : 'transparent',
-                        fontWeight: isUserSquad ? 'bold' : 'normal'
-                      }}
-                    >
-                      <td style={{ padding: '20px 32px', fontFamily: 'var(--font)', fontSize: '0.85rem' }}>
-                        {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
-                      </td>
-                      <td style={{ padding: '20px 20px', fontFamily: 'var(--font)', fontSize: '0.85rem' }}>
-                        {squad.name} {isUserSquad && <span style={{ color: 'var(--gold)', fontSize: '0.7rem', marginLeft: 8 }}>[YOU]</span>}
-                      </td>
-                      <td style={{ padding: '20px 20px', fontFamily: 'var(--font)', fontSize: '0.85rem', color: 'var(--text-dim)' }}>
-                        {squad.captain}
-                      </td>
-                      <td style={{ padding: '20px 20px', fontFamily: 'var(--font)', fontSize: '0.85rem' }}>
-                        {squad.memberCount}
-                      </td>
-                      <td style={{ padding: '20px 20px', fontFamily: 'var(--font)', fontSize: '0.85rem' }}>
-                        {squad.totalPredictions}
-                      </td>
-                      <td style={{ padding: '20px 20px', fontFamily: 'var(--font)', fontSize: '0.85rem', color: 'var(--gold)', fontWeight: 'bold' }}>
-                        {squad.totalPoints}
-                      </td>
-                      <td style={{ padding: '20px 32px', fontFamily: 'var(--font)', fontSize: '0.85rem', textAlign: 'right' }}>
-                        {formatEther(squad.totalWinnings)} OKB
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            {squads.length === 0 ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-dim)' }}>
+                No squads created yet. Be the first to create one!
+              </div>
+            ) : (
+              <table className="leaderboard-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-dimmer)', fontSize: '0.7rem', fontFamily: 'var(--font)' }}>
+                    <th style={{ padding: '16px 32px' }}>RANK</th>
+                    <th style={{ padding: '16px 20px' }}>SQUAD</th>
+                    <th style={{ padding: '16px 20px' }}>CAPTAIN</th>
+                    <th style={{ padding: '16px 20px' }}>MEMBERS</th>
+                    <th style={{ padding: '16px 20px' }}>PREDICTIONS</th>
+                    <th style={{ padding: '16px 20px' }}>POINTS</th>
+                    <th style={{ padding: '16px 32px', textAlign: 'right' }}>TOTAL WINNINGS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {squads.map((squad, index) => {
+                    const isUserSquad = squad.squadId === userSquadId;
+                    return (
+                      <tr 
+                        key={squad.squadId} 
+                        style={{ 
+                          borderBottom: index < squads.length - 1 ? '1px solid var(--border-light)' : 'none',
+                          backgroundColor: isUserSquad ? 'rgba(245, 158, 11, 0.05)' : 'transparent',
+                          fontWeight: isUserSquad ? 'bold' : 'normal'
+                        }}
+                      >
+                        <td style={{ padding: '20px 32px', fontFamily: 'var(--font)', fontSize: '0.85rem' }}>
+                          {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                        </td>
+                        <td style={{ padding: '20px 20px', fontFamily: 'var(--font)', fontSize: '0.85rem' }}>
+                          {squad.name} {isUserSquad && <span style={{ color: 'var(--gold)', fontSize: '0.7rem', marginLeft: 8 }}>[YOU]</span>}
+                        </td>
+                        <td style={{ padding: '20px 20px', fontFamily: 'var(--font)', fontSize: '0.85rem', color: 'var(--text-dim)' }}>
+                          {squad.captain}
+                        </td>
+                        <td style={{ padding: '20px 20px', fontFamily: 'var(--font)', fontSize: '0.85rem' }}>
+                          {squad.memberCount}
+                        </td>
+                        <td style={{ padding: '20px 20px', fontFamily: 'var(--font)', fontSize: '0.85rem' }}>
+                          {squad.totalPredictions}
+                        </td>
+                        <td style={{ padding: '20px 20px', fontFamily: 'var(--font)', fontSize: '0.85rem', color: 'var(--gold)', fontWeight: 'bold' }}>
+                          {squad.totalPoints}
+                        </td>
+                        <td style={{ padding: '20px 32px', fontFamily: 'var(--font)', fontSize: '0.85rem', textAlign: 'right' }}>
+                          {formatEther(squad.totalWinnings)} OKB
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
 

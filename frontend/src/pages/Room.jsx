@@ -3,46 +3,40 @@ import { useParams, Link } from 'react-router-dom';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { parseEther, formatEther } from 'viem';
 import toast from 'react-hot-toast';
-import { CONTRACT_ADDRESS, CONTRACT_ABI } from '../config/contract';
+import { CONTRACT_ADDRESS, CONTRACT_ABI, parseContractError } from '../config/contract';
 import AIAgent from '../components/AIAgent';
-
-const DEMO_ROOMS = {
-  1: { home: 'Mexico', away: 'Canada', kickoff: 1749654000, totalPool: '0.45' },
-  2: { home: 'USA', away: 'Morocco', kickoff: 1749740400, totalPool: '0.80' },
-  3: { home: 'Argentina', away: 'Japan', kickoff: 1749826800, totalPool: '1.20' },
-  4: { home: 'Brazil', away: 'South Korea', kickoff: 1749826800, totalPool: '0.95' },
-  5: { home: 'France', away: 'Germany', kickoff: 1749913200, totalPool: '2.10' },
-  6: { home: 'England', away: 'Spain', kickoff: 1749913200, totalPool: '3.40' },
-};
+import AgentActionConsole from '../components/AgentActionConsole';
+import LiveHypeNFT from '../components/LiveHypeNFT';
+import RoomChat from '../components/RoomChat';
 
 export default function Room() {
   const { roomId } = useParams();
-  const { address, isConnected } = useAccount();
+  
+  const isDemo = window.location.search.includes('demo=true');
+  const { address: realAddress, isConnected: realIsConnected } = useAccount();
+  const isConnected = isDemo ? true : realIsConnected;
+  const address = isDemo ? (realAddress || '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266') : realAddress;
+
+  // Demo interactive states
+  const [demoJoined, setDemoJoined] = useState(false);
+  const [demoPrediction, setDemoPrediction] = useState(null);
 
   // Prediction form state
   const [homeScore, setHomeScore] = useState(0);
   const [awayScore, setAwayScore] = useState(0);
   const [stakeAmount, setStakeAmount] = useState('0.1');
 
-  // Local demo states
-  const [demoIsMember, setDemoIsMember] = useState(false);
-  const [demoPrediction, setDemoPrediction] = useState(null);
-  const [demoClaimed, setDemoClaimed] = useState(false);
-
   // Wagmi Write hooks
   const { writeContract: joinRoomWrite, isPending: joinPending } = useWriteContract();
   const { writeContract: predictWrite, isPending: predPending } = useWriteContract();
   const { writeContract: claimWrite, isPending: claimPending } = useWriteContract();
 
-  // Wagmi Read hooks
-  const { data: roomData, isLoading: isRoomLoading, refetch: refetchRoom } = useReadContract({
+  // Wagmi Read hooks — always enabled, reads go to X Layer Testnet
+  const { data: roomData, isLoading: isRoomLoading, isError: isRoomError, refetch: refetchRoom } = useReadContract({
     address: CONTRACT_ADDRESS,
     abi: CONTRACT_ABI,
     functionName: 'getRoom',
     args: [BigInt(roomId)],
-    query: {
-      enabled: !!roomId && CONTRACT_ADDRESS !== '0x0000000000000000000000000000000000000000',
-    }
   });
 
   const matchId = roomData ? Number(roomData.matchId) : null;
@@ -53,7 +47,7 @@ export default function Room() {
     functionName: 'getMatch',
     args: [matchId ? BigInt(matchId) : BigInt(0)],
     query: {
-      enabled: !!matchId && CONTRACT_ADDRESS !== '0x0000000000000000000000000000000000000000',
+      enabled: !!matchId,
     }
   });
 
@@ -62,9 +56,6 @@ export default function Room() {
     abi: CONTRACT_ABI,
     functionName: 'getRoomMembers',
     args: [BigInt(roomId)],
-    query: {
-      enabled: !!roomId && CONTRACT_ADDRESS !== '0x0000000000000000000000000000000000000000',
-    }
   });
 
   const { data: userPrediction, refetch: refetchPrediction } = useReadContract({
@@ -73,76 +64,73 @@ export default function Room() {
     functionName: 'getPrediction',
     args: [BigInt(roomId), address || '0x0000000000000000000000000000000000000000'],
     query: {
-      enabled: !!roomId && !!address && CONTRACT_ADDRESS !== '0x0000000000000000000000000000000000000000',
+      enabled: !!address,
     }
   });
 
-  // Determine mode
-  const isDemoMode = CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000' || !roomData;
-
-  // Derived structures
+  // Derived structures from on-chain data
   const room = useMemo(() => {
-    if (roomData) {
+    if (isDemo) {
       return {
-        roomId: Number(roomData.roomId),
-        creator: roomData.creator,
-        matchId: Number(roomData.matchId),
-        minStake: formatEther(roomData.minStake),
-        maxStake: formatEther(roomData.maxStake),
-        maxMembers: Number(roomData.maxMembers),
-        totalPool: formatEther(roomData.totalPool),
-        memberCount: Number(roomData.memberCount),
-        status: Number(roomData.status),
+        roomId: Number(roomId) || 1,
+        creator: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+        matchId: 1,
+        minStake: '0.01',
+        maxStake: '1.0',
+        maxMembers: 10,
+        totalPool: demoPrediction ? (2.4 + Number(demoPrediction.stakeAmount)).toFixed(2) : '2.40',
+        memberCount: demoJoined ? 7 : 6,
+        status: 1,
       };
     }
-    const dr = DEMO_ROOMS[roomId] || { home: 'Team A', away: 'Team B', kickoff: 1749654000, totalPool: '0.50' };
+    if (!roomData || Number(roomData.roomId) === 0) return null;
     return {
-      roomId: Number(roomId),
-      creator: '0x0000...0000',
-      matchId: 1,
-      minStake: '0.01',
-      maxStake: '1.0',
-      maxMembers: 10,
-      totalPool: dr.totalPool,
-      memberCount: demoIsMember ? 4 : 3,
-      status: 0,
+      roomId: Number(roomData.roomId),
+      creator: roomData.creator,
+      matchId: Number(roomData.matchId),
+      minStake: formatEther(roomData.minStake),
+      maxStake: formatEther(roomData.maxStake),
+      maxMembers: Number(roomData.maxMembers),
+      totalPool: formatEther(roomData.totalPool),
+      memberCount: Number(roomData.memberCount),
+      status: Number(roomData.status),
     };
-  }, [roomData, roomId, demoIsMember]);
+  }, [roomData, isDemo, roomId, demoJoined, demoPrediction]);
 
   const match = useMemo(() => {
-    if (matchData) {
+    if (isDemo) {
       return {
-        homeTeam: matchData.homeTeam,
-        awayTeam: matchData.awayTeam,
-        kickoffTime: Number(matchData.kickoffTime),
-        homeScore: Number(matchData.homeScore),
-        awayScore: Number(matchData.awayScore),
-        resolved: matchData.resolved,
-        result: Number(matchData.result),
+        homeTeam: 'Mexico',
+        awayTeam: 'South Africa',
+        kickoffTime: Math.floor(Date.now()/1000) + 3600,
+        homeScore: 0,
+        awayScore: 0,
+        resolved: false,
+        result: 0,
       };
     }
-    const dm = DEMO_ROOMS[roomId] || { home: 'Team A', away: 'Team B', kickoff: 1749654000 };
+    if (!matchData || !matchData.homeTeam) return null;
     return {
-      homeTeam: dm.home,
-      awayTeam: dm.away,
-      kickoffTime: dm.kickoff,
-      homeScore: 0,
-      awayScore: 0,
-      resolved: false,
-      result: 0,
+      homeTeam: matchData.homeTeam,
+      awayTeam: matchData.awayTeam,
+      kickoffTime: Number(matchData.kickoffTime),
+      homeScore: Number(matchData.homeScore),
+      awayScore: Number(matchData.awayScore),
+      resolved: matchData.resolved,
+      result: Number(matchData.result),
     };
-  }, [matchData, roomId]);
+  }, [matchData, isDemo]);
 
   const isMember = useMemo(() => {
-    if (isDemoMode) return demoIsMember;
+    if (isDemo) return demoJoined;
     if (roomMembers && address) {
       return roomMembers.some((m) => m.toLowerCase() === address.toLowerCase());
     }
     return false;
-  }, [roomMembers, address, isDemoMode, demoIsMember]);
+  }, [roomMembers, address, isDemo, demoJoined]);
 
   const prediction = useMemo(() => {
-    if (isDemoMode) return demoPrediction;
+    if (isDemo) return demoPrediction;
     if (userPrediction && userPrediction.stakeAmount > 0n) {
       return {
         predictedResult: Number(userPrediction.predictedResult),
@@ -154,7 +142,7 @@ export default function Room() {
       };
     }
     return null;
-  }, [userPrediction, isDemoMode, demoPrediction]);
+  }, [userPrediction, isDemo, demoPrediction]);
 
   const getResult = (h, a) => {
     if (h > a) return 1; // HOME_WIN
@@ -163,12 +151,12 @@ export default function Room() {
   };
 
   const handleJoin = () => {
-    if (!isConnected) { toast.error('Connect wallet first!'); return; }
-    if (isDemoMode) {
-      toast.success('Joined Room (Demo Mode) 🤝');
-      setDemoIsMember(true);
+    if (isDemo) {
+      toast.success('Joined Watch Party on X Layer! 🤝 (MOCK)');
+      setDemoJoined(true);
       return;
     }
+    if (!isConnected) { toast.error('Connect wallet first!'); return; }
     joinRoomWrite({
       address: CONTRACT_ADDRESS,
       abi: CONTRACT_ABI,
@@ -176,24 +164,26 @@ export default function Room() {
       args: [BigInt(roomId)],
     }, {
       onSuccess: () => {
-        toast.success('Joined Watch Party! 🤝');
+        toast.success('Joined Watch Party on X Layer! 🤝');
         refetchMembers();
       },
-      onError: (err) => toast.error(err.shortMessage || 'Join failed'),
+      onError: (err) => {
+        console.error('JoinRoom error:', err);
+        toast.error(parseContractError(err, 'Failed to join room'));
+      },
     });
   };
 
   const handlePredict = () => {
-    if (!isConnected) { toast.error('Connect wallet first!'); return; }
+    if (!room) { toast.error('Room data not loaded'); return; }
     if (Number(stakeAmount) < Number(room.minStake) || Number(stakeAmount) > Number(room.maxStake)) {
       toast.error(`Stake must be between ${room.minStake} and ${room.maxStake} OKB`);
       return;
     }
-    if (isDemoMode) {
-      const result = getResult(homeScore, awayScore);
-      toast.success('Prediction Locked (Demo Mode) 🎯');
+    if (isDemo) {
+      toast.success('Prediction Locked on X Layer! 🎯 (MOCK)');
       setDemoPrediction({
-        predictedResult: result,
+        predictedResult: getResult(homeScore, awayScore),
         predictedHomeScore: homeScore,
         predictedAwayScore: awayScore,
         stakeAmount: stakeAmount,
@@ -202,6 +192,7 @@ export default function Room() {
       });
       return;
     }
+    if (!isConnected) { toast.error('Connect wallet first!'); return; }
     const result = getResult(homeScore, awayScore);
     predictWrite({
       address: CONTRACT_ADDRESS,
@@ -211,18 +202,26 @@ export default function Room() {
       value: parseEther(stakeAmount),
     }, {
       onSuccess: () => {
-        toast.success('Prediction Locked! 🎯');
+        toast.success('Prediction Locked on X Layer! 🎯');
         refetchPrediction();
         refetchRoom();
       },
-      onError: (err) => toast.error(err.shortMessage || 'Failed to submit prediction'),
+      onError: (err) => {
+        console.error('Prediction error:', err);
+        toast.error(parseContractError(err, 'Failed to submit prediction'));
+      },
     });
   };
 
   const handleClaim = () => {
-    if (isDemoMode) {
-      toast.success('Winnings claimed (Demo Mode) 💰');
-      setDemoClaimed(true);
+    if (isDemo) {
+      toast.success('Winnings Claimed on X Layer! 💰 (MOCK)');
+      if (demoPrediction) {
+        setDemoPrediction({
+          ...demoPrediction,
+          claimed: true,
+        });
+      }
       return;
     }
     claimWrite({
@@ -232,14 +231,19 @@ export default function Room() {
       args: [BigInt(roomId)],
     }, {
       onSuccess: () => {
-        toast.success('Winnings Claimed! 💰');
+        toast.success('Winnings Claimed on X Layer! 💰');
         refetchPrediction();
       },
-      onError: (err) => toast.error(err.shortMessage || 'Claim failed'),
+      onError: (err) => {
+        console.error('Claim error:', err);
+        toast.error(parseContractError(err, 'Failed to claim winnings'));
+      },
     });
   };
 
-  if (isRoomLoading || isMatchLoading) {
+  // Loading state
+  const isRoomLoadingActual = (isRoomLoading || isMatchLoading) && !isDemo;
+  if (isRoomLoadingActual) {
     return (
       <main className="room-container">
         <div className="glass-strong skeleton" style={{ height: 400 }}></div>
@@ -247,234 +251,292 @@ export default function Room() {
     );
   }
 
+  // Error state — room not found on-chain
+  const isRoomErrorActual = (isRoomError || !room || !match) && !isDemo;
+  if (isRoomErrorActual) {
+    return (
+      <main className="room-container">
+        <div className="glass-strong" style={{ padding: 60, textAlign: 'center' }}>
+          <h2 style={{
+            fontFamily: 'var(--font-head)',
+            fontSize: '1.4rem',
+            fontWeight: 800,
+            textTransform: 'uppercase',
+            marginBottom: 16,
+          }}>
+            ROOM NOT FOUND
+          </h2>
+          <p style={{
+            fontFamily: 'var(--font)',
+            fontSize: '0.82rem',
+            color: 'var(--text-dim)',
+            lineHeight: 1.7,
+            maxWidth: '40ch',
+            margin: '0 auto 24px',
+          }}>
+            Room #{roomId} does not exist on the X Layer Testnet contract, or the contract is not yet deployed.
+            Make sure contracts are deployed via <code style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 6px' }}>bash start-testnet.sh</code> and matches/rooms have been created.
+          </p>
+          <Link to="/matches" className="btn btn-primary" style={{ display: 'inline-flex' }}>
+            BROWSE MATCHES
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
   return (
-    <main className="room-container">
-      <div className="room-header">
+    <main style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 24px 60px' }}>
+      <div className="room-header" style={{ marginBottom: 32 }}>
         <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
           <span className="badge-demo">
             ROOM #{roomId}
           </span>
-          {isDemoMode && (
-            <span className="badge-demo">
-              DEMO MODE
-            </span>
-          )}
+          <span className="badge-demo" style={{ background: 'rgba(34, 197, 94, 0.2)', color: '#22c55e' }}>
+            X LAYER TESTNET
+          </span>
         </div>
-        <h2>{match.homeTeam} VS {match.awayTeam}</h2>
-        <div className="room-pool">
-          <span className="label">TOTAL POT:</span> {room.totalPool} OKB
+        <h2 style={{ fontFamily: 'var(--font-head)', fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 800, textTransform: 'uppercase', textAlign: 'center', margin: '14px 0 8px' }}>
+          {match.homeTeam} VS {match.awayTeam}
+        </h2>
+        <div className="room-pool" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10, fontSize: '1.25rem', marginTop: 12, margin: '16px 0' }}>
+          <span style={{ color: 'var(--text-dim)', fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>TOTAL POT:</span> {room.totalPool} OKB
         </div>
-        <p style={{ fontSize: '0.72rem', color: 'var(--text-dimmer)', marginTop: 8 }}>
+        <p style={{ fontSize: '0.72rem', color: 'var(--text-dimmer)', marginTop: 8, textAlign: 'center' }}>
           Limit: {room.minStake} – {room.maxStake} OKB // Members: {room.memberCount}/{room.maxMembers}
         </p>
       </div>
 
-      {!isConnected ? (
-        <div className="glass-strong" style={{ padding: 40, textAlign: 'center', marginBottom: 24 }}>
-          <p style={{ fontFamily: 'var(--font)', fontSize: '0.82rem', color: 'var(--text-dim)', marginBottom: 12 }}>
-            A wallet connection is required to interact with this Watch Party Room.
-          </p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.05fr 0.95fr', gap: 32 }} className="room-dashboard-grid">
+        {/* Left Column: Form & NFT */}
+        <div>
+          {!isConnected ? (
+            <div className="glass-strong" style={{ padding: 40, textAlign: 'center', marginBottom: 24 }}>
+              <p style={{ fontFamily: 'var(--font)', fontSize: '0.82rem', color: 'var(--text-dim)', marginBottom: 12 }}>
+                A wallet connection is required to interact with this Watch Party Room.
+              </p>
+            </div>
+          ) : !isMember ? (
+            <div className="glass-strong" style={{ padding: 40, textAlign: 'center', marginBottom: 24 }}>
+              <p style={{ fontFamily: 'var(--font)', fontSize: '0.82rem', color: 'var(--text-dim)', marginBottom: 20 }}>
+                Join the watch party to lock in your predictions and social stakes.
+              </p>
+              <button
+                className="btn btn-primary"
+                style={{ margin: '0 auto' }}
+                onClick={handleJoin}
+                disabled={joinPending}
+              >
+                {joinPending ? 'JOINING PARTY...' : 'JOIN WATCH PARTY'}
+              </button>
+            </div>
+          ) : !prediction ? (
+            /* Prediction Staking Form */
+            <div className="glass-strong" style={{ padding: 40, marginBottom: 24 }}>
+              <label className="form-label" style={{ textAlign: 'center', display: 'block', marginBottom: 24 }}>
+                PREDICT THE FINAL SCORE
+              </label>
+              <AIAgent 
+                matchId={room.matchId} 
+                homeTeam={match.homeTeam} 
+                awayTeam={match.awayTeam} 
+                onSelectPrediction={(home, away) => {
+                  setHomeScore(home);
+                  setAwayScore(away);
+                  toast.success(`Score auto-filled: ${home} - ${away}! 🤖`);
+                }}
+                autoStart={true}
+              />
+              <div className="score-inputs" style={{ marginTop: 24 }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{
+                    fontSize: '0.68rem',
+                    color: 'var(--text-dim)',
+                    marginBottom: 10,
+                    fontFamily: 'var(--font)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em',
+                  }}>HOME ({match.homeTeam})</div>
+                  <input className="form-input score-input" type="number" min="0" max="20"
+                    value={homeScore} onChange={(e) => setHomeScore(Number(e.target.value))} />
+                </div>
+                <div className="score-separator">—</div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{
+                    fontSize: '0.68rem',
+                    color: 'var(--text-dim)',
+                    marginBottom: 10,
+                    fontFamily: 'var(--font)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em',
+                  }}>AWAY ({match.awayTeam})</div>
+                  <input className="form-input score-input" type="number" min="0" max="20"
+                    value={awayScore} onChange={(e) => setAwayScore(Number(e.target.value))} />
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginTop: 28 }}>
+                <label className="form-label">STAKE AMOUNT (OKB)</label>
+                <input className="form-input" type="number" step="0.01" min={room.minStake} max={room.maxStake}
+                  value={stakeAmount} onChange={(e) => setStakeAmount(e.target.value)} />
+              </div>
+
+              <button
+                className="btn btn-primary"
+                style={{ width: '100%', justifyContent: 'center' }}
+                onClick={handlePredict}
+                disabled={predPending}
+              >
+                {predPending ? 'LOCKING IN WALLET...' : 'LOCK IN PREDICTION & STAKE'}
+              </button>
+            </div>
+          ) : (
+            /* Locked In Prediction Detail Card */
+            <div className="glass-strong" style={{ padding: 40, marginBottom: 24, textAlign: 'center' }}>
+              <p style={{
+                fontFamily: 'var(--font)',
+                fontSize: '0.68rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.12em',
+                color: 'var(--text-dimmer)',
+                marginBottom: 12,
+              }}>
+                YOUR PREDICTION LOCKED
+              </p>
+              <div style={{
+                fontFamily: 'var(--font-head)',
+                fontSize: '2.8rem',
+                fontWeight: 800,
+                lineHeight: 1,
+                letterSpacing: '-0.02em',
+                margin: '16px 0',
+              }}>
+                {prediction.predictedHomeScore} — {prediction.predictedAwayScore}
+              </div>
+              <p style={{ fontFamily: 'var(--font)', fontSize: '0.78rem', color: 'var(--text-dim)' }}>
+                Staked: <strong style={{ color: 'var(--fg)' }}>{prediction.stakeAmount} OKB</strong>
+              </p>
+              <div style={{ marginTop: 24, display: 'flex', gap: 12, justifyContent: 'center' }}>
+                <Link to="/collection" className="btn btn-secondary" style={{ padding: '8px 16px', fontSize: '0.72rem' }}>
+                  🎟️ VIEW NFT TICKET
+                </Link>
+                <button
+                  onClick={() => {
+                    const tweetText = encodeURIComponent(
+                      `🏟️ I just locked in a prediction of ${prediction.predictedHomeScore} - ${prediction.predictedAwayScore} on @MatchStake for ${match.homeTeam} vs ${match.awayTeam}! Staked ${prediction.stakeAmount} OKB on @XLayerOfficial! #WorldCup2026 #MatchStake`
+                    );
+                    window.open(`https://twitter.com/intent/tweet?text=${tweetText}`, '_blank');
+                  }}
+                  className="btn btn-secondary"
+                  style={{ padding: '8px 16px', fontSize: '0.72rem' }}
+                >
+                  SHARE TO X
+                </button>
+              </div>
+            </div>
+          )}
+
+          <LiveHypeNFT
+            homeTeam={match.homeTeam}
+            awayTeam={match.awayTeam}
+            prediction={prediction ? `${prediction.predictedHomeScore} - ${prediction.predictedAwayScore}` : `${homeScore} - ${awayScore}`}
+          />
         </div>
-      ) : !isMember ? (
-        <div className="glass-strong" style={{ padding: 40, textAlign: 'center', marginBottom: 24 }}>
-          <p style={{ fontFamily: 'var(--font)', fontSize: '0.82rem', color: 'var(--text-dim)', marginBottom: 20 }}>
-            Join the watch party to lock in your predictions and social stakes.
-          </p>
-          <button
-            className="btn btn-primary"
-            style={{ margin: '0 auto' }}
-            onClick={handleJoin}
-            disabled={joinPending}
-          >
-            {joinPending ? 'JOINING PARTY...' : 'JOIN WATCH PARTY'}
-          </button>
-        </div>
-      ) : !prediction ? (
-        /* Prediction Staking Form */
-        <div className="glass-strong" style={{ padding: 40, marginBottom: 24 }}>
-          <label className="form-label" style={{ textAlign: 'center', display: 'block', marginBottom: 24 }}>
-            PREDICT THE FINAL SCORE
-          </label>
-          <AIAgent 
-            matchId={room.matchId} 
+
+        {/* Right Column: Chat & Agent Action Console */}
+        <div>
+          <RoomChat 
             homeTeam={match.homeTeam} 
             awayTeam={match.awayTeam} 
             onSelectPrediction={(home, away) => {
               setHomeScore(home);
               setAwayScore(away);
-              toast.success(`Score auto-filled: ${home} - ${away}! 🤖`);
-            }}
-            autoStart={true}
+            }} 
           />
-          <div className="score-inputs" style={{ marginTop: 24 }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{
-                fontSize: '0.68rem',
-                color: 'var(--text-dim)',
-                marginBottom: 10,
-                fontFamily: 'var(--font)',
+
+          <AgentActionConsole compact matchLabel={`${match.homeTeam} vs ${match.awayTeam}`} />
+
+          {/* Claim / Resolution Section */}
+          {isMember && prediction && (
+            <div className="glass" style={{ padding: 32, textAlign: 'center', marginBottom: 24 }}>
+              <h3 style={{
+                fontFamily: 'var(--font-head)',
+                fontSize: '0.98rem',
+                fontWeight: 700,
                 textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-              }}>HOME ({match.homeTeam})</div>
-              <input className="form-input score-input" type="number" min="0" max="20"
-                value={homeScore} onChange={(e) => setHomeScore(Number(e.target.value))} />
-            </div>
-            <div className="score-separator">—</div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{
-                fontSize: '0.68rem',
-                color: 'var(--text-dim)',
-                marginBottom: 10,
-                fontFamily: 'var(--font)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-              }}>AWAY ({match.awayTeam})</div>
-              <input className="form-input score-input" type="number" min="0" max="20"
-                value={awayScore} onChange={(e) => setAwayScore(Number(e.target.value))} />
-            </div>
-          </div>
-
-          <div className="form-group" style={{ marginTop: 28 }}>
-            <label className="form-label">STAKE AMOUNT (OKB)</label>
-            <input className="form-input" type="number" step="0.01" min={room.minStake} max={room.maxStake}
-              value={stakeAmount} onChange={(e) => setStakeAmount(e.target.value)} />
-          </div>
-
-          <button
-            className="btn btn-primary"
-            style={{ width: '100%', justifyContent: 'center' }}
-            onClick={handlePredict}
-            disabled={predPending}
-          >
-            {predPending ? 'LOCKING IN WALLET...' : 'LOCK IN PREDICTION & STAKE'}
-          </button>
-        </div>
-      ) : (
-        /* Locked In Prediction Detail Card */
-        <div className="glass-strong" style={{ padding: 40, marginBottom: 24, textAlign: 'center' }}>
-          <p style={{
-            fontFamily: 'var(--font)',
-            fontSize: '0.68rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.12em',
-            color: 'var(--text-dimmer)',
-            marginBottom: 12,
-          }}>
-            YOUR PREDICTION LOCKED
-          </p>
-          <div style={{
-            fontFamily: 'var(--font-head)',
-            fontSize: '2.8rem',
-            fontWeight: 800,
-            lineHeight: 1,
-            letterSpacing: '-0.02em',
-            margin: '16px 0',
-          }}>
-            {prediction.predictedHomeScore} — {prediction.predictedAwayScore}
-          </div>
-          <p style={{ fontFamily: 'var(--font)', fontSize: '0.78rem', color: 'var(--text-dim)' }}>
-            Staked: <strong style={{ color: 'var(--fg)' }}>{prediction.stakeAmount} OKB</strong>
-          </p>
-          <div style={{ marginTop: 24, display: 'flex', gap: 12, justifyContent: 'center' }}>
-            <Link to="/collection" className="btn btn-secondary" style={{ padding: '8px 16px', fontSize: '0.72rem' }}>
-              🎟️ VIEW NFT TICKET
-            </Link>
-            <button
-              onClick={() => {
-                const outcome = prediction.predictedResult === 1 ? 'Home Win' : prediction.predictedResult === 2 ? 'Away Win' : 'Draw';
-                const tweetText = encodeURIComponent(
-                  `🏟️ I just locked in a prediction of ${prediction.predictedHomeScore} - ${prediction.predictedAwayScore} on @MatchStake for ${match.homeTeam} vs ${match.awayTeam}! Staked ${prediction.stakeAmount} OKB on @XLayerOfficial! #WorldCup2026 #MatchStake`
-                );
-                window.open(`https://twitter.com/intent/tweet?text=${tweetText}`, '_blank');
-              }}
-              className="btn btn-secondary"
-              style={{ padding: '8px 16px', fontSize: '0.72rem' }}
-            >
-              SHARE TO X
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Claim / Resolution Section */}
-      {isMember && prediction && (
-        <div className="glass" style={{ padding: 32, textAlign: 'center' }}>
-          <h3 style={{
-            fontFamily: 'var(--font-head)',
-            fontSize: '0.98rem',
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            marginBottom: 12,
-          }}>
-            ORACLE RESOLUTION STATUS
-          </h3>
-          
-          {!match.resolved ? (
-            <div>
-              <p style={{
-                color: 'var(--text-dim)',
-                fontSize: '0.78rem',
-                marginBottom: 0,
-                fontFamily: 'var(--font)',
-                lineHeight: 1.7,
+                marginBottom: 12,
               }}>
-                The match is not resolved yet. Once the score is finalized by the admin oracle, you can claim winnings here.
-              </p>
-            </div>
-          ) : (
-            <div>
-              <p style={{
-                color: 'var(--text-dim)',
-                fontSize: '0.82rem',
-                marginBottom: 20,
-                fontFamily: 'var(--font)',
-                lineHeight: 1.7,
-              }}>
-                Match ended: <strong style={{ color: 'var(--fg)' }}>{match.homeScore} — {match.awayScore}</strong>.
-              </p>
+                ORACLE RESOLUTION STATUS
+              </h3>
               
-              {demoClaimed || prediction.claimed ? (
-                <div style={{ color: 'var(--gold)', fontWeight: 'bold', fontSize: '0.88rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                  ✓ Winnings Claimed Successfully
+              {!match.resolved ? (
+                <div>
+                  <p style={{
+                    color: 'var(--text-dim)',
+                    fontSize: '0.78rem',
+                    marginBottom: 0,
+                    fontFamily: 'var(--font)',
+                    lineHeight: 1.7,
+                  }}>
+                    The match is not resolved yet. Once the score is finalized by the admin oracle, you can claim winnings here.
+                  </p>
                 </div>
               ) : (
                 <div>
-                  {prediction.predictedResult === match.result ? (
-                    <div>
-                      <p style={{ color: 'var(--gold)', fontSize: '0.82rem', marginBottom: 20, fontWeight: 500 }}>
-                        Your prediction result was correct! Proportional pot is ready.
-                      </p>
-                      <button
-                        className="btn btn-secondary"
-                        style={{ margin: '0 auto' }}
-                        onClick={handleClaim}
-                        disabled={claimPending}
-                      >
-                        {claimPending ? 'CLAIMING WINNINGS...' : 'CLAIM WINNINGS'}
-                      </button>
+                  <p style={{
+                    color: 'var(--text-dim)',
+                    fontSize: '0.82rem',
+                    marginBottom: 20,
+                    fontFamily: 'var(--font)',
+                    lineHeight: 1.7,
+                  }}>
+                    Match ended: <strong style={{ color: 'var(--fg)' }}>{match.homeScore} — {match.awayScore}</strong>.
+                  </p>
+                  
+                  {prediction.claimed ? (
+                    <div style={{ color: 'var(--gold)', fontWeight: 'bold', fontSize: '0.88rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                      ✓ Winnings Claimed Successfully
                     </div>
                   ) : (
-                    <p style={{ color: 'var(--text-dimmer)', fontSize: '0.78rem' }}>
-                      Your prediction did not win this time. Better luck in the next matchWatch!
-                    </p>
+                    <div>
+                      {prediction.predictedResult === match.result ? (
+                        <div>
+                          <p style={{ color: 'var(--gold)', fontSize: '0.82rem', marginBottom: 20, fontWeight: 500 }}>
+                            Your prediction result was correct! Proportional pot is ready.
+                          </p>
+                          <button
+                            className="btn btn-secondary"
+                            style={{ margin: '0 auto' }}
+                            onClick={handleClaim}
+                            disabled={claimPending}
+                          >
+                            {claimPending ? 'CLAIMING WINNINGS...' : 'CLAIM WINNINGS'}
+                          </button>
+                        </div>
+                      ) : (
+                        <p style={{ color: 'var(--text-dimmer)', fontSize: '0.78rem' }}>
+                          Your prediction did not win this time. Better luck in the next matchWatch!
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
             </div>
           )}
-        </div>
-      )}
 
-      {/* Invite Link */}
-      <div className="invite-box" style={{ marginTop: 24 }}>
-        <code>SHARE: {window.location.href}</code>
-        <button
-          className="btn btn-secondary"
-          style={{ padding: '6px 16px', fontSize: '0.68rem' }}
-          onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success('Link copied!'); }}
-        >
-          COPY
-        </button>
+          {/* Invite Link */}
+          <div className="invite-box" style={{ marginTop: 0 }}>
+            <code>SHARE: {window.location.href}</code>
+            <button
+              className="btn btn-secondary"
+              style={{ padding: '6px 16px', fontSize: '0.68rem' }}
+              onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success('Link copied!'); }}
+            >
+              COPY
+            </button>
+          </div>
+        </div>
       </div>
     </main>
   );

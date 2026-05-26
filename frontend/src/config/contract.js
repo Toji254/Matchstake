@@ -1,8 +1,7 @@
 // MatchStake Contract Configuration
-// Update CONTRACT_ADDRESS and NFT_ADDRESS after deployment
-
-export const CONTRACT_ADDRESS = '0x5FbDB2315678afecb367f032d93F642f64180aa3'; // TODO: Update after deploy
-export const NFT_ADDRESS = '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512';      // TODO: Update after deploy
+// Addresses are injected by the deploy script (start-testnet.sh).
+export const CONTRACT_ADDRESS = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
+export const NFT_ADDRESS = '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512';
 
 export const CONTRACT_ABI = [
   // Match Management
@@ -417,3 +416,35 @@ export const NFT_ABI = [
     type: 'function',
   },
 ];
+
+// Helper: parse wallet/contract errors into user-friendly messages
+export function parseContractError(err, fallback = 'Transaction failed') {
+  const raw = err?.shortMessage || err?.message || '';
+  const lower = raw.toLowerCase();
+
+  if (lower.includes('user rejected') || lower.includes('user denied')) {
+    return 'Transaction cancelled by user.';
+  }
+  if (lower.includes('risk') || lower.includes('legal')) {
+    return 'Your wallet flagged this contract as risky. Try clearing your wallet cache, or deploy fresh contracts to X Layer Testnet using: bash start-testnet.sh';
+  }
+  if (lower.includes('insufficient funds') || lower.includes('insufficient balance')) {
+    return 'Insufficient OKB balance. Get testnet OKB from the X Layer faucet.';
+  }
+  if (lower.includes('chain mismatch') || lower.includes('wrong network') || lower.includes('chain id')) {
+    return 'Wrong network. Please switch to X Layer Testnet (Chain ID 195).';
+  }
+  if (lower.includes('nonce')) {
+    return 'Nonce error. Try resetting your wallet activity in settings.';
+  }
+  if (lower.includes('could not detect network') || lower.includes('network error') || lower.includes('fetch')) {
+    return 'Cannot connect to X Layer Testnet RPC. Check your internet connection.';
+  }
+  if (lower.includes('execution reverted')) {
+    // Try to extract the revert reason
+    const revertMatch = raw.match(/reason:\s*(.+?)(?:\n|$)/i) || raw.match(/reverted with reason string '(.+?)'/);
+    if (revertMatch) return `Contract error: ${revertMatch[1]}`;
+    return 'Transaction reverted by the smart contract.';
+  }
+  return raw || fallback;
+}

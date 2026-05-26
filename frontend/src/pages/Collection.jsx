@@ -3,48 +3,11 @@ import { useAccount, useReadContract, useReadContracts } from 'wagmi';
 import { NFT_ADDRESS, NFT_ABI } from '../config/contract';
 import { formatEther } from 'viem';
 
-// Simulated demo tickets when offline or wallet disconnected
-const DEMO_TICKETS = [
-  {
-    tokenId: 101,
-    homeTeam: 'USA',
-    awayTeam: 'Morocco',
-    predictionText: '3 - 2',
-    predictedOutcome: 'HOME_WIN',
-    stakeAmount: 50000000000000000n, // 0.05 OKB
-    pointsEarned: 8n,
-    resolved: true,
-    isWinner: true,
-    roomId: 2
-  },
-  {
-    tokenId: 102,
-    homeTeam: 'Mexico',
-    awayTeam: 'Canada',
-    predictionText: '1 - 1',
-    predictedOutcome: 'DRAW',
-    stakeAmount: 20000000000000000n, // 0.02 OKB
-    pointsEarned: 0n,
-    resolved: false,
-    isWinner: false,
-    roomId: 1
-  },
-  {
-    tokenId: 103,
-    homeTeam: 'Argentina',
-    awayTeam: 'Japan',
-    predictionText: '0 - 2',
-    predictedOutcome: 'AWAY_WIN',
-    stakeAmount: 100000000000000000n, // 0.10 OKB
-    pointsEarned: 0n,
-    resolved: true,
-    isWinner: false,
-    roomId: 3
-  }
-];
-
 export default function Collection() {
-  const { address, isConnected } = useAccount();
+  const isDemo = window.location.search.includes('demo=true');
+  const { address: realAddress, isConnected: realIsConnected } = useAccount();
+  const isConnected = isDemo ? true : realIsConnected;
+  const address = isDemo ? (realAddress || '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266') : realAddress;
 
   // Read token IDs for connected user
   const { data: userTokenIds, isError, isLoading: isContractLoading } = useReadContract({
@@ -53,7 +16,7 @@ export default function Collection() {
     functionName: 'getUserTokens',
     args: address ? [address] : undefined,
     query: {
-      enabled: !!address && NFT_ADDRESS !== '0x0000000000000000000000000000000000000000',
+      enabled: !!address,
     }
   });
 
@@ -66,24 +29,63 @@ export default function Collection() {
       args: [id],
     })),
     query: {
-      enabled: !!userTokenIds && userTokenIds.length > 0 && NFT_ADDRESS !== '0x0000000000000000000000000000000000000000',
+      enabled: !!userTokenIds && userTokenIds.length > 0,
     }
   });
 
-  const isDemo = !isConnected || isError || NFT_ADDRESS === '0x0000000000000000000000000000000000000000';
-  const loading = (isContractLoading || isNFTDataLoading) && !isDemo;
+  const loading = (isContractLoading || isNFTDataLoading) && isConnected && !isDemo;
 
   const tokens = useMemo(() => {
-    if (isConnected && !isDemo && userTokenIds && nftDataResults && nftDataResults.length > 0) {
+    if (isDemo) {
+      return [
+        {
+          tokenId: 382,
+          roomId: 1,
+          matchId: 1,
+          homeTeam: 'Mexico',
+          awayTeam: 'South Africa',
+          predictionText: '2-1',
+          predictedOutcome: 'HOME_WIN',
+          stakeAmount: 100000000000000000n, // 0.1 OKB
+          pointsEarned: 0n,
+          resolved: false,
+          isWinner: false,
+        },
+        {
+          tokenId: 129,
+          roomId: 6,
+          matchId: 6,
+          homeTeam: 'Brazil',
+          awayTeam: 'Morocco',
+          predictionText: '2-1',
+          predictedOutcome: 'HOME_WIN',
+          stakeAmount: 500000000000000000n, // 0.5 OKB
+          pointsEarned: 8n, // Exact Score points!
+          resolved: true,
+          isWinner: true,
+        },
+        {
+          tokenId: 95,
+          roomId: 5,
+          matchId: 5,
+          homeTeam: 'Qatar',
+          awayTeam: 'Switzerland',
+          predictionText: '0-2',
+          predictedOutcome: 'AWAY_WIN',
+          stakeAmount: 200000000000000000n, // 0.2 OKB
+          pointsEarned: 3n, // Correct Result points!
+          resolved: true,
+          isWinner: true,
+        },
+      ];
+    }
+    if (isConnected && userTokenIds && nftDataResults && nftDataResults.length > 0) {
       return nftDataResults
         .map((res, index) => {
           if (res.status !== 'success' || !res.result) return null;
           
-          // In Solidity: struct NFTData contains roomId, matchId, homeTeam, awayTeam, predictionText, predictedOutcome, stakeAmount, pointsEarned, resolved, isWinner
-          // Wagmi v2 returns it as an array (tuple) or an object with named fields
           const data = res.result;
           
-          // Helper to extract fields that might be indexed or key-value mapped
           const getField = (name, index) => {
             if (data && typeof data === 'object') {
               if (name in data) return data[name];
@@ -109,8 +111,8 @@ export default function Collection() {
         })
         .filter((t) => t !== null);
     }
-    return isDemo ? DEMO_TICKETS : [];
-  }, [isConnected, isDemo, userTokenIds, nftDataResults]);
+    return [];
+  }, [isConnected, userTokenIds, nftDataResults, isDemo]);
 
   const handleShareTweet = (ticket) => {
     const outcome = ticket.predictedOutcome === 'HOME_WIN' ? 'Win' : ticket.predictedOutcome === 'AWAY_WIN' ? 'Win' : 'Draw';
@@ -158,15 +160,13 @@ export default function Collection() {
             </p>
           </div>
 
-          {isDemo && (
-            <span className="badge-demo">
-              ⬡ DEMO MODE ACTIVE
-            </span>
-          )}
+          <span className="badge-demo" style={{ background: 'rgba(34, 197, 94, 0.2)', color: '#22c55e' }}>
+            X LAYER TESTNET
+          </span>
         </div>
 
         {/* Loading */}
-        {(loading || isContractLoading) && (
+        {loading && (
           <div className="match-grid">
             {[1, 2, 3].map((n) => (
               <div key={n} className="skeleton" style={{ height: 420, borderRadius: 0 }} />
@@ -174,8 +174,23 @@ export default function Collection() {
           </div>
         )}
 
+        {/* Not Connected */}
+        {!isConnected && !loading && (
+          <div className="glass-strong" style={{
+            padding: '80px 40px',
+            textAlign: 'center',
+            border: '1px solid var(--border-light)'
+          }}>
+            <span style={{ fontSize: '3rem', display: 'block', marginBottom: 16 }}>🔗</span>
+            <h3 style={{ fontFamily: 'var(--font-head)', margin: '0 0 8px 0' }}>CONNECT YOUR WALLET</h3>
+            <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>
+              Connect your wallet to view your on-chain prediction NFT tickets.
+            </p>
+          </div>
+        )}
+
         {/* Collection Grid */}
-        {!loading && !isContractLoading && (
+        {isConnected && !loading && (
           <>
             {tokens.length === 0 ? (
               <div className="glass-strong" style={{
@@ -186,7 +201,10 @@ export default function Collection() {
                 <span style={{ fontSize: '3rem', display: 'block', marginBottom: 16 }}>🎟️</span>
                 <h3 style={{ fontFamily: 'var(--font-head)', margin: '0 0 8px 0' }}>NO NFT TICKETS FOUND</h3>
                 <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>
-                  Join a Watch Party room and submit a match prediction to mint your ticket.
+                  {isError
+                    ? 'Could not connect to the PredictionNFT contract on X Layer Testnet.'
+                    : 'Join a Watch Party room and submit a match prediction to mint your ticket.'
+                  }
                 </p>
               </div>
             ) : (

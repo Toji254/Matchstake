@@ -5,9 +5,9 @@
 # ============================================
 #
 # This script:
-# 1. Starts the local Hardhat node
-# 2. Deploys the smart contracts
-# 3. Seeds demo data (matches, rooms, predictions)
+# 1. Deploys the smart contracts to X Layer Testnet
+# 2. Seeds demo data (matches, rooms, squads)
+# 3. Updates the frontend with deployed addresses
 # 4. Starts the frontend dev server
 # 5. Opens the app in demo tour mode
 #
@@ -42,11 +42,11 @@ echo ""
 cleanup() {
   echo ""
   echo -e "${DIM}[CLEANUP] Stopping background processes...${NC}"
-  if [ -n "$HARDHAT_PID" ]; then
-    kill $HARDHAT_PID 2>/dev/null || true
-  fi
   if [ -n "$VITE_PID" ]; then
     kill $VITE_PID 2>/dev/null || true
+  fi
+  if [ -n "$BACKEND_PID" ]; then
+    kill $BACKEND_PID 2>/dev/null || true
   fi
   echo -e "${DIM}[CLEANUP] Done.${NC}"
 }
@@ -88,128 +88,92 @@ if [ ! -d "$FRONTEND_DIR/node_modules" ]; then
   (cd "$FRONTEND_DIR" && npm install --silent 2>/dev/null) || true
 fi
 
+if [ ! -d "$SCRIPT_DIR/backend/node_modules" ]; then
+  echo -e "  ${DIM}Installing backend dependencies...${NC}"
+  (cd "$SCRIPT_DIR/backend" && npm install --silent 2>/dev/null) || true
+fi
+
 echo -e "  ${GREEN}✓ Dependencies ready${NC}"
 
 # ============================================
-# STEP 3: Start local Hardhat node
+# STEP 3: Verify Environment
 # ============================================
 echo ""
-echo -e "${CYAN}[03/06]${NC} Starting local Hardhat blockchain..."
+echo -e "${CYAN}[03/06]${NC} Verifying deployment environment..."
 
-# Kill any existing hardhat nodes
-pkill -f "hardhat node" 2>/dev/null || true
-sleep 1
+if ! grep -q "PRIVATE_KEY=" "$CONTRACTS_DIR/.env" 2>/dev/null || grep -q "your_private_key_here" "$CONTRACTS_DIR/.env" 2>/dev/null; then
+  echo -e "${RED}ERROR: No valid PRIVATE_KEY found in contracts/.env${NC}"
+  echo -e "${GOLD}To deploy to X Layer Testnet, you must add your private key to:${NC}"
+  echo -e "${WHITE}  $CONTRACTS_DIR/.env${NC}"
+  echo -e "Make sure the account has testnet OKB for gas."
+  exit 1
+fi
 
-(cd "$CONTRACTS_DIR" && npx hardhat node --hostname 0.0.0.0 > /tmp/hardhat.log 2>&1) &
-HARDHAT_PID=$!
-
-# Wait for Hardhat to start
-echo -e "  ${DIM}Waiting for Hardhat node to initialize...${NC}"
-for i in {1..15}; do
-  if curl -s -o /dev/null http://127.0.0.1:8545 2>/dev/null; then
-    echo -e "  ${GREEN}✓ Hardhat node running on http://127.0.0.1:8545 (PID: $HARDHAT_PID)${NC}"
-    break
-  fi
-  sleep 1
-  if [ $i -eq 15 ]; then
-    echo -e "  ${GOLD}⚠ Hardhat node may not have started. Continuing with demo mode...${NC}"
-    HARDHAT_PID=""
-  fi
-done
+echo -e "  ${GREEN}✓ Environment verified for X Layer Testnet${NC}"
 
 # ============================================
 # STEP 4: Deploy contracts
 # ============================================
 echo ""
-echo -e "${CYAN}[04/06]${NC} Deploying smart contracts..."
+echo -e "${CYAN}[04/06]${NC} Deploying smart contracts to X Layer Testnet..."
 
-if [ -n "$HARDHAT_PID" ]; then
-  DEPLOY_OUTPUT=$(cd "$CONTRACTS_DIR" && npx hardhat run scripts/deploy.js --network localhost 2>&1) || true
+DEPLOY_OUTPUT=$(cd "$CONTRACTS_DIR" && npx hardhat run scripts/deploy.js --network xlayer_testnet 2>&1) || true
+
+# Extract addresses from deploy output
+MATCHSTAKE_ADDR=$(echo "$DEPLOY_OUTPUT" | grep -oP '0x[a-fA-F0-9]{40}' | head -1)
+NFT_ADDR=$(echo "$DEPLOY_OUTPUT" | grep -oP '0x[a-fA-F0-9]{40}' | tail -1)
+
+if [ -n "$MATCHSTAKE_ADDR" ] && [ -n "$NFT_ADDR" ] && [[ "$MATCHSTAKE_ADDR" != "$NFT_ADDR" ]]; then
+  echo -e "  ${GREEN}✓ MatchStake deployed: ${WHITE}$MATCHSTAKE_ADDR${NC}"
+  echo -e "  ${GREEN}✓ PredictionNFT deployed: ${WHITE}$NFT_ADDR${NC}"
   
-  # Extract addresses from deploy output
-  MATCHSTAKE_ADDR=$(echo "$DEPLOY_OUTPUT" | grep -oP '0x[a-fA-F0-9]{40}' | head -1)
-  NFT_ADDR=$(echo "$DEPLOY_OUTPUT" | grep -oP '0x[a-fA-F0-9]{40}' | tail -1)
-  
-  if [ -n "$MATCHSTAKE_ADDR" ]; then
-    echo -e "  ${GREEN}✓ MatchStake deployed: ${WHITE}$MATCHSTAKE_ADDR${NC}"
-    echo -e "  ${GREEN}✓ PredictionNFT deployed: ${WHITE}$NFT_ADDR${NC}"
-    
-    # Update frontend contract config
-    sed -i "s|export const CONTRACT_ADDRESS = '.*'|export const CONTRACT_ADDRESS = '$MATCHSTAKE_ADDR'|" \
-      "$FRONTEND_DIR/src/config/contract.js" 2>/dev/null || true
-    sed -i "s|export const NFT_ADDRESS = '.*'|export const NFT_ADDRESS = '$NFT_ADDR'|" \
-      "$FRONTEND_DIR/src/config/contract.js" 2>/dev/null || true
-  else
-    echo -e "  ${GOLD}⚠ Deploy may have failed. App will run in demo mode.${NC}"
-    echo -e "  ${DIM}Deploy output: $DEPLOY_OUTPUT${NC}"
-  fi
+  # Update frontend contract config
+  sed -i "s|export const CONTRACT_ADDRESS = '.*'|export const CONTRACT_ADDRESS = '$MATCHSTAKE_ADDR'|" \
+    "$FRONTEND_DIR/src/config/contract.js" 2>/dev/null || true
+  sed -i "s|export const NFT_ADDRESS = '.*'|export const NFT_ADDRESS = '$NFT_ADDR'|" \
+    "$FRONTEND_DIR/src/config/contract.js" 2>/dev/null || true
 else
-  echo -e "  ${GOLD}⚠ Skipping deployment (no Hardhat node). App will run in demo mode.${NC}"
+  echo -e "  ${RED}⚠ Deploy failed. Could not extract contract addresses.${NC}"
+  echo -e "  ${DIM}Deploy output: $DEPLOY_OUTPUT${NC}"
+  exit 1
 fi
 
 # ============================================
 # STEP 5: Seed demo data
 # ============================================
 echo ""
-echo -e "${CYAN}[05/06]${NC} Seeding World Cup match data..."
+echo -e "${CYAN}[05/06]${NC} Seeding World Cup match data on testnet..."
 
-if [ -n "$HARDHAT_PID" ] && [ -n "$MATCHSTAKE_ADDR" ]; then
+if [ -n "$MATCHSTAKE_ADDR" ]; then
   # Create a seed script
   cat > /tmp/seed_matches.js << 'SEEDEOF'
 const { ethers } = require("hardhat");
 
 async function main() {
-  const [owner, user1, user2] = await ethers.getSigners();
+  const [owner] = await ethers.getSigners();
   
   const contractAddress = process.env.MATCHSTAKE_ADDR;
   const MatchStake = await ethers.getContractAt("MatchStake", contractAddress);
   
-  console.log("Creating World Cup 2026 matches...");
+  console.log("Creating demo rooms...");
   
-  const matches = [
-    ["Mexico", "Canada", Math.floor(Date.now()/1000) + 86400],
-    ["USA", "Morocco", Math.floor(Date.now()/1000) + 172800],
-    ["Argentina", "Japan", Math.floor(Date.now()/1000) + 259200],
-    ["Brazil", "South Korea", Math.floor(Date.now()/1000) + 259200],
-    ["France", "Germany", Math.floor(Date.now()/1000) + 345600],
-    ["England", "Spain", Math.floor(Date.now()/1000) + 345600],
-    ["Portugal", "Netherlands", Math.floor(Date.now()/1000) + 432000],
-    ["Italy", "Senegal", Math.floor(Date.now()/1000) + 432000],
-  ];
-  
-  for (const [home, away, kickoff] of matches) {
-    const tx = await MatchStake.createMatch(home, away, kickoff);
-    await tx.wait();
-    console.log(`  ✓ ${home} vs ${away}`);
+  try {
+    // Create a room for match 5 (France vs Germany)
+    const minStake = ethers.parseEther("0.01");
+    const maxStake = ethers.parseEther("1");
+    const tx1 = await MatchStake.createRoom(5, minStake, maxStake, 10);
+    await tx1.wait();
+    console.log("  ✓ Room 1: France vs Germany (0.01-1 OKB, 10 members)");
+    
+    // Join and predict
+    const tx2 = await MatchStake.joinRoom(1);
+    await tx2.wait();
+    const tx3 = await MatchStake.makePrediction(1, 3, 2, 2, { value: ethers.parseEther("0.1") });
+    await tx3.wait();
+    console.log("  ✓ Owner predicted 2-2 Draw, staked 0.1 OKB");
+  } catch (e) {
+    console.log("  ⚠ Room seeding failed (might already exist):", e.message);
   }
-  
-  console.log("\nCreating demo rooms...");
-  
-  // Create a room for match 5 (France vs Germany)
-  const minStake = ethers.parseEther("0.01");
-  const maxStake = ethers.parseEther("1");
-  const tx1 = await MatchStake.createRoom(5, minStake, maxStake, 10);
-  await tx1.wait();
-  console.log("  ✓ Room 1: France vs Germany (0.01-1 OKB, 10 members)");
-  
-  // User1 joins and predicts
-  const tx2 = await MatchStake.connect(user1).joinRoom(1);
-  await tx2.wait();
-  const tx3 = await MatchStake.connect(user1).makePrediction(1, 3, 2, 2, { value: ethers.parseEther("0.1") });
-  await tx3.wait();
-  console.log("  ✓ User1 predicted 2-2 Draw, staked 0.1 OKB");
-  
-  // User2 joins and predicts
-  const tx4 = await MatchStake.connect(user2).joinRoom(1);
-  await tx4.wait();
-  const tx5 = await MatchStake.connect(user2).makePrediction(1, 1, 3, 1, { value: ethers.parseEther("0.2") });
-  await tx5.wait();
-  console.log("  ✓ User2 predicted 3-1 Home Win, staked 0.2 OKB");
-  
-  // Create a squad
-  const tx6 = await MatchStake.connect(user1).createSquad("X LAYER GIANTS");
-  await tx6.wait();
-  console.log("  ✓ Squad created: X LAYER GIANTS");
   
   console.log("\n✅ All demo data seeded successfully!");
 }
@@ -217,7 +181,7 @@ async function main() {
 main().catch(console.error);
 SEEDEOF
 
-  MATCHSTAKE_ADDR=$MATCHSTAKE_ADDR npx hardhat run /tmp/seed_matches.js --network localhost 2>&1 \
+  MATCHSTAKE_ADDR=$MATCHSTAKE_ADDR npx hardhat run /tmp/seed_matches.js --network xlayer_testnet 2>&1 \
     | while IFS= read -r line; do echo -e "  ${DIM}$line${NC}"; done || true
   
   echo -e "  ${GREEN}✓ Demo data seeded${NC}"
@@ -226,29 +190,50 @@ else
 fi
 
 # ============================================
-# STEP 6: Start frontend
+# STEP 6: Start backend and frontend
 # ============================================
 echo ""
-echo -e "${CYAN}[06/06]${NC} Starting frontend dev server..."
+echo -e "${CYAN}[06/06]${NC} Starting backend and frontend dev servers..."
 
-(cd "$FRONTEND_DIR" && npx vite --host 0.0.0.0 --port 5173) &
-VITE_PID=$!
+echo -e "  ${DIM}Starting Express backend on port 3001...${NC}"
+(cd "$SCRIPT_DIR/backend" && npm start) &
+BACKEND_PID=$!
 
-# Wait for Vite to start
+# Wait for backend to start
 for i in {1..10}; do
-  if curl -s -o /dev/null http://localhost:5173 2>/dev/null; then
+  if curl -s -o /dev/null http://localhost:3001/api/health 2>/dev/null; then
     break
   fi
   sleep 1
 done
+
+echo -e "  ${DIM}Starting Vite frontend on port 3000...${NC}"
+(cd "$FRONTEND_DIR" && npx vite --host 0.0.0.0 --port 3000) &
+VITE_PID=$!
+
+# Wait for Vite to start
+for i in {1..10}; do
+  if curl -s -o /dev/null http://localhost:3000 2>/dev/null; then
+    break
+  fi
+  sleep 1
+done
+
+# Try to open the browser automatically
+echo -e "  ${DIM}Opening browser to demo...${NC}"
+if command -v xdg-open &> /dev/null; then
+  xdg-open "http://localhost:3000/?demo=true" &> /dev/null &
+elif command -v open &> /dev/null; then
+  open "http://localhost:3000/?demo=true" &> /dev/null &
+fi
 
 echo ""
 echo -e "${WHITE}╔══════════════════════════════════════════════╗${NC}"
 echo -e "${WHITE}║                                              ║${NC}"
 echo -e "${WHITE}║   ${GREEN}✓ MATCHSTAKE IS RUNNING!${WHITE}                  ║${NC}"
 echo -e "${WHITE}║                                              ║${NC}"
-echo -e "${WHITE}║   ${CYAN}App:${NC}  http://localhost:5173               ${WHITE}║${NC}"
-echo -e "${WHITE}║   ${GOLD}Demo:${NC} http://localhost:5173/?demo=true    ${WHITE}║${NC}"
+echo -e "${WHITE}║   ${CYAN}App:${NC}  http://localhost:3000               ${WHITE}║${NC}"
+echo -e "${WHITE}║   ${GOLD}Demo:${NC} http://localhost:3000/?demo=true    ${WHITE}║${NC}"
 echo -e "${WHITE}║                                              ║${NC}"
 echo -e "${WHITE}║   ${DIM}Start recording your screen, then open${NC}    ${WHITE}║${NC}"
 echo -e "${WHITE}║   ${DIM}the Demo URL to auto-tour all features.${NC}   ${WHITE}║${NC}"

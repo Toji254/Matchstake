@@ -34,6 +34,13 @@ const DEMO_STEPS = [
     badge: 'SMART CONTRACT READ',
   },
   {
+    path: '/agent-ops',
+    title: 'AGENT OPS — OKX OS INTEGRATION HUB',
+    description: 'Deploy permissionless World Cup outcome markets via Exchange OS. Compile natural language commands and plug-and-play agent Skills via Onchain OS.',
+    duration: 6500,
+    badge: 'EXCHANGE OS / ONCHAIN OS',
+  },
+  {
     path: '/create-room/5',
     title: 'CREATE WATCH PARTY ROOM',
     description: 'Pick a match, set stake ranges (min/max OKB), and invite friends. Room params stored on-chain.',
@@ -93,6 +100,20 @@ const DEMO_STEPS = [
     action: 'createSquad',
     duration: 5000,
     badge: 'GAMEFI / SQUADS',
+  },
+  {
+    path: '/share/5',
+    title: 'VIRAL SHARE CARD — SOCIAL LOOP',
+    description: 'Public challenge page with team matchup, predicted score, stake amount, and one-click X/Twitter post. The viral acquisition funnel for watch parties.',
+    duration: 4000,
+    badge: 'VIRALITY / SOCIALFI',
+  },
+  {
+    path: '/submission',
+    title: 'SUBMISSION PROOF ROOM — JUDGE PACK',
+    description: 'Single-page hackathon requirements map: Exchange OS venues, Onchain OS Skills, FanLiquidityHook, deployed contract addresses, and demo links.',
+    duration: 5000,
+    badge: 'SUBMISSION PROOF',
   },
   {
     path: '/swap',
@@ -203,7 +224,6 @@ export default function DemoTour() {
   const executeAction = useCallback((action) => {
     switch (action) {
       case 'fillCreateRoom': {
-        // The form is already pre-filled with defaults
         const btn = document.querySelector('.btn-primary');
         if (btn && !btn.disabled) {
           setTimeout(() => btn.click(), 1500);
@@ -211,7 +231,6 @@ export default function DemoTour() {
         break;
       }
       case 'joinAndPredict': {
-        // Click join button if visible
         const joinBtn = document.querySelector('.btn-primary');
         if (joinBtn && joinBtn.textContent.includes('JOIN')) {
           joinBtn.click();
@@ -221,7 +240,6 @@ export default function DemoTour() {
       case 'createSquad': {
         const input = document.querySelector('input[placeholder="ENTER SQUAD NAME..."]');
         if (input) {
-          // Simulate typing
           const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
             window.HTMLInputElement.prototype, 'value'
           ).set;
@@ -232,7 +250,6 @@ export default function DemoTour() {
         break;
       }
       case 'demoSwap': {
-        // The swap widget has default values, just highlight it
         break;
       }
       default:
@@ -328,7 +345,6 @@ export default function DemoTour() {
             alignItems: 'flex-end',
             gap: 40,
           }}>
-            {/* Left: step info */}
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
                 <span style={{
@@ -392,7 +408,6 @@ export default function DemoTour() {
               </p>
             </div>
 
-            {/* Right: controls */}
             <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
               <button
                 onClick={handlePrev}

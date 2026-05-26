@@ -26,12 +26,16 @@ async function main() {
 
   // 4. Seed Matches
   const matches = [
-    { home: "Mexico", away: "Canada", kickoff: Math.floor(Date.now() / 1000) + 86400 * 22 },
-    { home: "USA", away: "Morocco", kickoff: Math.floor(Date.now() / 1000) + 86400 * 23 },
-    { home: "Argentina", away: "Japan", kickoff: Math.floor(Date.now() / 1000) + 86400 * 24 },
-    { home: "Brazil", away: "South Korea", kickoff: Math.floor(Date.now() / 1000) + 86400 * 24 },
-    { home: "France", away: "Germany", kickoff: Math.floor(Date.now() / 1000) + 86400 * 25 },
-    { home: "England", away: "Spain", kickoff: Math.floor(Date.now() / 1000) + 86400 * 25 },
+    { home: "Mexico", away: "South Africa", kickoff: Math.floor(Date.now() / 1000) + 3600 },
+    { home: "Korea Republic", away: "Czechia", kickoff: Math.floor(Date.now() / 1000) + 14400 },
+    { home: "Canada", away: "Bosnia and Herzegovina", kickoff: Math.floor(Date.now() / 1000) + 28800 },
+    { home: "USA", away: "Paraguay", kickoff: Math.floor(Date.now() / 1000) + 86400 },
+    { home: "Qatar", away: "Switzerland", kickoff: Math.floor(Date.now() / 1000) + 100800 },
+    { home: "Brazil", away: "Morocco", kickoff: Math.floor(Date.now() / 1000) + 172800 },
+    { home: "Haiti", away: "Scotland", kickoff: Math.floor(Date.now() / 1000) + 259200 },
+    { home: "Australia", away: "Türkiye", kickoff: Math.floor(Date.now() / 1000) + 273600 },
+    { home: "Germany", away: "Curaçao", kickoff: Math.floor(Date.now() / 1000) + 345600 },
+    { home: "Netherlands", away: "Japan", kickoff: Math.floor(Date.now() / 1000) + 360000 },
   ];
 
   console.log("\nSeeding matches...");

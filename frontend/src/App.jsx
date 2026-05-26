@@ -11,9 +11,13 @@ import FacilityDetail from './pages/FacilityDetail';
 import Swap from './pages/Swap';
 import Collection from './pages/Collection';
 import Squads from './pages/Squads';
+import AgentOps from './pages/AgentOps';
+import ShareRoom from './pages/ShareRoom';
+import Submission from './pages/Submission';
 
 import ErrorBoundary from './components/ErrorBoundary';
 import DemoTour from './components/DemoTour';
+import NetworkGuard from './components/NetworkGuard';
 
 function AppNav() {
   const location = useLocation();
@@ -29,10 +33,12 @@ function AppNav() {
 
   const navLinks = [
     { label: 'MATCHES', path: '/matches' },
+    { label: 'AGENT OPS', path: '/agent-ops' },
     { label: 'LEADERBOARD', path: '/leaderboard' },
     { label: 'SQUADS', path: '/squads' },
     { label: 'MY TICKETS', path: '/collection' },
     { label: 'SWAP', path: '/swap' },
+    { label: 'SUBMISSION', path: '/submission' },
   ];
 
   return (
@@ -80,16 +86,20 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/matches" element={<Matches />} />
+          <Route path="/agent-ops" element={<AgentOps />} />
           <Route path="/room/:roomId" element={<Room />} />
           <Route path="/create-room/:matchId" element={<CreateRoom />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/squads" element={<Squads />} />
           <Route path="/collection" element={<Collection />} />
           <Route path="/swap" element={<Swap />} />
+          <Route path="/share/:roomId" element={<ShareRoom />} />
+          <Route path="/submission" element={<Submission />} />
           <Route path="/facility/:slug" element={<FacilityDetail />} />
         </Routes>
       </ErrorBoundary>
       <DemoTour />
+      <NetworkGuard />
     </>
   );
 }

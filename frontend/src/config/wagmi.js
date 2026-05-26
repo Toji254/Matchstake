@@ -1,6 +1,5 @@
 import { createConfig, http } from 'wagmi';
 import { defineChain } from 'viem';
-import { hardhat } from 'viem/chains';
 
 // X Layer Mainnet
 export const xlayer = defineChain({
@@ -29,12 +28,13 @@ export const xlayerTestnet = defineChain({
   testnet: true,
 });
 
+// Target chain for the app
+export const TARGET_CHAIN = xlayerTestnet;
+export const TARGET_CHAIN_ID = xlayerTestnet.id; // 195
+
 export const wagmiConfig = createConfig({
-  chains: [xlayer, xlayerTestnet, hardhat],
+  chains: [xlayerTestnet],
   transports: {
-    [xlayer.id]: http(),
-    [xlayerTestnet.id]: http(),
-    [hardhat.id]: http(),
+    [xlayerTestnet.id]: http('https://testrpc.xlayer.tech'),
   },
 });
-
