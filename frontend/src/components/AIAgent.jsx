@@ -139,6 +139,7 @@ export default function AIAgent({ matchId, homeTeam, awayTeam, onSelectPredictio
 
   const consoleBottomRef = useRef(null);
   const terminalRef = useRef(null);
+  const userScrolledUpRef = useRef(false);
 
   const home = homeTeam || 'TEAM A';
   const away = awayTeam || 'TEAM B';
@@ -161,18 +162,32 @@ export default function AIAgent({ matchId, homeTeam, awayTeam, onSelectPredictio
   }, [status]);
 
   // Auto-scroll only the internal terminal container.
-  // Avoid scrollIntoView() because it can pull the whole page while logs stream.
+  // Uses requestAnimationFrame to avoid synchronous layout thrashing that can
+  // cause the browser to yank the outer page scroll position.
   useEffect(() => {
     if (!terminalRef.current) return;
+    // Never auto-scroll if the user has intentionally scrolled up
+    if (userScrolledUpRef.current) return;
     const terminal = terminalRef.current;
-    const nearBottom =
-      terminal.scrollHeight - terminal.scrollTop - terminal.clientHeight < 80;
-
-    // Keep sticky-to-bottom behavior while user is reading live output near the bottom.
-    if (nearBottom || status === 'thinking' || status === 'typing') {
+    requestAnimationFrame(() => {
+      if (!terminal) return;
       terminal.scrollTop = terminal.scrollHeight;
-    }
+    });
   }, [logs, charIndex, status]);
+
+  // Detect when the user scrolls up inside the terminal and stop auto-scrolling.
+  // Reset when analysis restarts.
+  useEffect(() => {
+    const terminal = terminalRef.current;
+    if (!terminal) return;
+    const handleScroll = () => {
+      const nearBottom =
+        terminal.scrollHeight - terminal.scrollTop - terminal.clientHeight < 60;
+      userScrolledUpRef.current = !nearBottom;
+    };
+    terminal.addEventListener('scroll', handleScroll, { passive: true });
+    return () => terminal.removeEventListener('scroll', handleScroll);
+  }, [status]);
 
   // Autostart simulation trigger
   useEffect(() => {
@@ -226,6 +241,7 @@ export default function AIAgent({ matchId, homeTeam, awayTeam, onSelectPredictio
     setLogs([]);
     setCurrentLogIndex(0);
     setCharIndex(0);
+    userScrolledUpRef.current = false;
 
     try {
       const live = await fetchLiveAnalysis(home, away);
@@ -333,8 +349,9 @@ export default function AIAgent({ matchId, homeTeam, awayTeam, onSelectPredictio
               className="terminal-console"
               ref={terminalRef}
               style={{
-                maxHeight: 280,
+                height: 280,
                 overflowY: 'auto',
+                overflowAnchor: 'none',
                 paddingRight: 10,
                 marginBottom: status === 'done' ? 16 : 0,
               }}

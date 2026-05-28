@@ -1,7 +1,7 @@
 // MatchStake Contract Configuration
 // Addresses are injected by the deploy script (start-testnet.sh).
-export const CONTRACT_ADDRESS = '0xB60E8451E89Dd40D941fffE43815DBD189Da4fd0';
-export const NFT_ADDRESS = '0x127EB6cD9DE956e95312CA9fC181f5eC1879F210';
+export const CONTRACT_ADDRESS = '0xaEe9AA09448fB11d5d50EAC4Fc9Cb470815306ef';
+export const NFT_ADDRESS = '0xa3D1c7f65d2f5F05d70937a050d2192961864631';
 
 // Uniswap v4 proof (X Layer Testnet)
 // Deployed via: contracts/scripts/deploy_v4.js

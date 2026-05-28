@@ -55,12 +55,29 @@ export default function CreateRoom() {
   const [isSubmittingTx, setIsSubmittingTx] = useState(false);
   const submitLockRef = useRef(false);
 
-  const { writeContract, data: hash, isPending } = useWriteContract();
+  // Persist pending tx hash in sessionStorage to survive navigations.
+  // This prevents the user from creating duplicate rooms when the wallet
+  // opens, they navigate back, and click "Create" a second time.
+  const PENDING_TX_KEY = `matchstake_pending_room_tx_${matchId}`;
+
+  const [pendingHash, setPendingHash] = useState(() => {
+    const stored = sessionStorage.getItem(PENDING_TX_KEY);
+    return stored || undefined;
+  });
+
+  const { writeContract, data: writeHash, isPending } = useWriteContract();
+
+  // The active hash is whichever came first: a previously stored one, or a fresh writeContract result
+  const hash = pendingHash || writeHash;
+
   const { isLoading: isConfirming, isSuccess, data: receipt } = useWaitForTransactionReceipt({ hash });
 
   // Navigate to room after successful creation
   useEffect(() => {
     if (isSuccess && hash) {
+      // Clear persisted pending tx
+      sessionStorage.removeItem(PENDING_TX_KEY);
+
       let createdRoomId = 1;
       if (receipt && receipt.logs) {
         try {
@@ -89,7 +106,7 @@ export default function CreateRoom() {
   }, [isSuccess, hash, receipt, navigate, isDemo]);
 
   const handleCreate = () => {
-    if (submitLockRef.current || isSubmittingTx || isPending || isConfirming) {
+    if (submitLockRef.current || isSubmittingTx || isPending || isConfirming || pendingHash) {
       toast.error('Transaction already pending in wallet.');
       return;
     }
@@ -164,6 +181,9 @@ export default function CreateRoom() {
       },
       {
         onSuccess: (txHash) => {
+          // Persist hash so re-mounts pick it up instead of re-submitting
+          sessionStorage.setItem(PENDING_TX_KEY, txHash);
+          setPendingHash(txHash);
           trackTransaction({ hash: txHash, action: `Create Room #${matchId}`, category: 'main' });
           toast.success(
             <span>
@@ -177,6 +197,9 @@ export default function CreateRoom() {
         },
         onError: (err) => {
           console.error('CreateRoom error:', err);
+          // Clear persisted pending tx on error so user can retry
+          sessionStorage.removeItem(PENDING_TX_KEY);
+          setPendingHash(undefined);
           toast.error(parseContractError(err, 'Failed to create room'));
         },
         onSettled: () => {
@@ -307,14 +330,18 @@ export default function CreateRoom() {
           className="btn btn-primary"
           style={{ width: '100%', marginTop: 12, justifyContent: 'center', opacity: match?.resolved ? 0.5 : 1 }}
           onClick={handleCreate}
-          disabled={isSubmittingTx || isPending || isConfirming || !isConnected || !!match?.resolved}
+          disabled={isSubmittingTx || isPending || isConfirming || !isConnected || !!match?.resolved || !!pendingHash}
         >
           {match?.resolved
             ? 'MATCH RESOLVED (CLOSED)'
-            : isSubmittingTx || isPending
-              ? 'CONFIRM IN WALLET...'
-              : isConfirming
-                ? 'CONFIRMING ON X LAYER...'
+            : pendingHash && isConfirming
+              ? 'CONFIRMING ON X LAYER...'
+              : pendingHash
+                ? 'TX PENDING IN WALLET...'
+                : isSubmittingTx || isPending
+                  ? 'CONFIRM IN WALLET...'
+                  : isConfirming
+                    ? 'CONFIRMING ON X LAYER...'
                 : isSuccess
                   ? 'ROOM CREATED ✓'
                   : 'CREATE WATCH PARTY ROOM'}

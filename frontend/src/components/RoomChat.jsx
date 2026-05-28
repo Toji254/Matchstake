@@ -39,12 +39,25 @@ export default function RoomChat({ homeTeam, awayTeam, onSelectPrediction }) {
   const [messages, setMessages] = useState(INITIAL_MESSAGES);
   const [inputVal, setInputVal] = useState('');
   const [simIndex, setSimIndex] = useState(0);
-  const chatEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
 
-  // Auto-scroll to bottom of chat
+  // Auto-scroll to bottom of chat feed locally without yanking the main page.
   useEffect(() => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (!chatContainerRef.current) return;
+    const container = chatContainerRef.current;
+    
+    const lastMsg = messages[messages.length - 1];
+    const isMe = lastMsg && lastMsg.sender && lastMsg.sender.startsWith('YOU');
+    
+    // Check if user is scrolled near the bottom (within 120px)
+    const nearBottom = 
+      container.scrollHeight - container.scrollTop - container.clientHeight < 120;
+
+    if (nearBottom || isMe) {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth'
+      });
     }
   }, [messages]);
 
@@ -190,7 +203,7 @@ export default function RoomChat({ homeTeam, awayTeam, onSelectPrediction }) {
       </div>
 
       {/* Chat feed list */}
-      <div style={{ flex: 1, padding: 18, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div ref={chatContainerRef} style={{ flex: 1, padding: 18, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
         {messages.map((msg) => {
           const isMe = msg.sender.startsWith('YOU');
           const isAgent = msg.isAgent;
@@ -240,7 +253,7 @@ export default function RoomChat({ homeTeam, awayTeam, onSelectPrediction }) {
             </div>
           );
         })}
-        <div ref={chatEndRef} />
+        {/* chatEndRef replaced by chatContainerRef scroll positioning */}
       </div>
 
       {/* Input section */}
