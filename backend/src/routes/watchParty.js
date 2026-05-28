@@ -83,7 +83,11 @@ router.post('/room/:roomId/predict', (req, res) => {
 router.post('/room/:roomId/resolve', (req, res) => {
   const room = resolveRoom(req.params.roomId);
   if (!room) return res.status(404).json({ error: 'Room not found' });
-  eventBus.emit('broadcast', 'match:resolved', { roomId: req.params.roomId });
+  eventBus.emit('broadcast', 'match:resolved', {
+    roomId: req.params.roomId,
+    homeTeam: room.homeTeam,
+    awayTeam: room.awayTeam,
+  });
   res.json({ success: true, room });
 });
 

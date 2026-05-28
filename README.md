@@ -1,16 +1,14 @@
 # MatchStake — OKX X Cup Hackathon Submission
 
-**MatchStake** is a decentralized, social watch party staking protocol for the FIFA World Cup 2026, built exclusively on the **OKX X Layer** network. Featuring a premium monochrome sci-fi editorial aesthetic, MatchStake combines real-time group chat rooms, dynamic live-updating prediction NFTs, and an on-device AI Co-Pilot, powered directly by OKX's latest **Exchange OS**, **Onchain OS**, and a custom **Uniswap v4 Hook** architecture.
+**MatchStake** is a decentralized, social watch party staking protocol for the FIFA World Cup 2026, built exclusively on the **OKX X Layer** network. Featuring a premium monochrome sci-fi editorial aesthetic, MatchStake combines real-time group chat rooms, dynamic live-updating prediction NFTs, and an on-device AI Co-Pilot, designed to integrate with OKX's upcoming **Exchange OS** and **Onchain OS** alongside a custom **Uniswap v4 Hook** architecture.
 
 ---
 
 > [!IMPORTANT]
-> ### 🏆 Hackathon Judges: Exchange OS & Onchain OS Highlight
-> MatchStake is engineered directly around the new OKX developer frameworks to deliver institutional-grade performance and an autonomous agent ecosystem:
-> 
-> * **Exchange OS Upgrade Integration:** Rather than rebuilding a custom matching ledger, MatchStake deploys permissionless sports prediction and outcome venues using the open **Exchange OS** core. It leverages their high-performance EVM-based order book matching, oracles, outcome assets, and automated revenue share contracts on the X Layer.
-> * **Onchain OS Core Integration:** Provides the **AI Agentic Wallet** capabilities, including **NLP Natural Language Command Parsing** ("Bet 0.1 OKB on France"), plug-and-play **Skills** modules (`npx skills add okx/onchainos-skills`), decentralized **DEX swap aggregation routing**, and **x402 zero-gas agent payments** on X Layer.
-> * **Custom Fan Liquidity Hook (`FanLiquidityHook.sol`):** A custom solidity hook that coordinates prediction pools, social multipliers, dynamically scaled swap fees based on AI match volatility telemetry, and dynamic NFT triggers.
+> ### 🏆 Hackathon Judges: Exchange OS & Onchain OS Highlight & Transparency Note
+> * **Exchange OS Sandbox:** Simulates launching permissionless prediction outcome venues on X Layer using their institutional matching book specifications (asset tokens, oracle sources, and revenue sharing rules) in anticipation of its public release.
+> * **Onchain OS Integration:** Fully integrated with the official **OKX Onchain OS Skills SDK** (`/home/lowkey/Desktop/onchainos-skills`). The AI Co-Pilot parses natural language staking inputs to generate exact CLI command invocations (`onchainos swap execute ...`, `onchainos portfolio ...`) and payload structures according to their modular Skill specifications, fully aligning our watch party agent with their real Defi/DEX aggregated pipelines.
+> * **Custom Fan Liquidity Hook (`FanLiquidityHook.sol`):** A fully functional, deployed Solidity contract prototype that runs on X Layer Testnet, connecting our AI-dynamic fee updates, outcome pool weightings, and prediction NFT state syncs.
 
 ---
 
@@ -39,31 +37,31 @@
                                                    ▼
                   ┌─────────────────────────────────────────────────┐
                   │                 OKX X LAYER                     │
-                  │   (EVM ZK-Rollup — Chain ID 195 Testnet/Mainnet) │
+                  │   (EVM ZK-Rollup — Chain ID 1952 Testnet / 196 Mainnet) │
                   └─────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🛠️ OKX OS Integration Workspaces
+## 🛠️ OKX OS Conceptual Sandbox Workspaces
 
-The platform features a dedicated **OS Operations Control Center** (`/agent-ops`) that visualizes and configures these capabilities in real-time:
+The platform features a dedicated **OS Operations Control Center** (`/agent-ops`) designed to showcase how these capabilities function in practice as a developer sandbox:
 
-### 1. Exchange OS Outcome Markets
-MatchStake integrates Exchange OS's open infrastructure to allow organizers to launch custom outcome markets for match results, goal spreads, and tournament brackets without writing low-level order books:
-* **Outcome Asset Configuration:** Custom sports events (e.g., *Argentina vs France — Win Outcome*) are compiled directly into on-chain outcome tokens.
-* **Oracles & Resolution:** Integrated with **OKLink API** and Chainlink multi-sigs for zero-trust, off-chain sports telemetry resolution.
-* **Matching Protocols:** Supports Limit Order Book matching modes or social AMM liquidity models.
-* **Fee Monetization:** Custom venue fees (e.g., 0.5% protocol cut) are configured and split programmatically among venue hosts, validators, and creators.
+### 1. Exchange OS Outcome Markets (Interactive Sandbox)
+Demonstrates the integration flow of Exchange OS's open infrastructure to allow organizers to launch custom outcome markets for match results, goal spreads, and tournament brackets without writing low-level order books:
+* **Outcome Asset Configuration:** Custom sports events (e.g., *Argentina vs France — Win Outcome*) are modeled as compiled outcome tokens.
+* **Oracles & Resolution:** Conceptually mapped to **OKLink API** and Chainlink multi-sigs for zero-trust, off-chain sports telemetry resolution.
+* **Matching Protocols:** Simulates Limit Order Book matching modes or social AMM liquidity models.
+* **Fee Monetization:** Custom venue fees (e.g., 0.5% protocol cut) are configured and programmatically distributed.
 
-### 2. Onchain OS Agentic Skills
-To elevate user and agent experience, MatchStake embeds the **Onchain OS Developer Kit** (`web3.okx.com/onchainos`):
-* **Natural Language Trade Engine (NLP):** Converts natural language messages from the Watch Party Chat (e.g. *"Swap 10 USDT to OKB and stake draw"*) into formatted JSON execution payloads containing asset classes, gas vouchers, and signature intents.
-* **Plug-and-Play Skills:** Implements pre-built capabilities (such as `okx/onchainos-dex-aggregator` and `okx/onchainos-x402-zero-gas`) to handle cross-token staking liquidity routes and gas-less user signatures.
+### 2. Onchain OS Agentic Skills (Integrated SDK)
+Fully integrated with the official **OKX Onchain OS Skills SDK** specifications:
+* **Natural Language Command Compiler (NLP):** Converts natural language messages from the Watch Party Chat (e.g. *"Swap 10 USDT to OKB and stake draw"*) into exact, formatted CLI command invocations (`onchainos swap execute --from ... --to ... --readable-amount 10 --chain xlayer`) and JSON execution payloads.
+* **Plug-and-Play Skills:** Directly maps the modular skills available in the SDK (such as `okx-wallet-portfolio`, `okx-dex-swap`, `okx-dex-market`, `okx-security`, and `okx-agent-payments-protocol`) to manage multi-chain balances, DEX aggregated routes, smart security auditing, and gas-free x402 deferred voucher execution.
 * **Live Telemetry & Hype NFTs:** The agent tracks real-time goal metrics and surges in chat velocity, triggering dynamic SVG NFT morph updates natively on the X Layer.
 
-### 3. Fan Liquidity Hook (FanLiquidityHook.sol)
-An advanced EVM-based custom hook concept deployable to the X Layer network to link decentralized liquidity directly to real-world match outcomes:
+### 3. Fan Liquidity Hook (FanLiquidityHook.sol — Deployed Contract)
+A fully written, compile-safe custom contract prototype deployable to the X Layer network to link decentralized liquidity directly to real-world match outcomes:
 * **AI-Powered Dynamic Fee System:** The AI co-pilot's match confidence/upset-risk signal adjusts dynamic fee credits via `updateMatchSignal()` to dynamically balance pools.
 * **Outcome Liquidity Routing:** Routes stakes/liquidity intent into HOME_WIN / AWAY_WIN / DRAW outcome buckets with configurable social multipliers (`socialMultiplierBps`).
 * **Fan Credit Accounting:** Every swap generates fan credits proportional to volume × dynamic fee × social multiplier, tracked per-room and per-trader for reward distribution.
@@ -79,6 +77,36 @@ An advanced EVM-based custom hook concept deployable to the X Layer network to l
 - **OKX DEX Swap Aggregator:** Local quotes routing USDT/USDC/ETH to OKB on X Layer, ensuring continuous liquidity for prediction stakes.
 - **Viral Share Cards:** Public challenge pages with team matchup cards, predicted scores, and one-click X/Twitter sharing for social acquisition loops.
 - **Submission Proof Room:** Judges-facing page mapping every hackathon requirement to a shipped feature, with deployed contract addresses and explorer links.
+
+---
+
+## 🧩 Core Product Model: Squads vs Watch Rooms
+
+To avoid confusion during judging/demo, MatchStake separates short-term prediction markets from long-term social identity:
+
+- **Watch Room (match-level market):**
+  - Created for a specific match (`matchId`).
+  - Users join the room, submit one score/result prediction, and stake OKB.
+  - Pot formation, room resolution, and claim flow happen at room level.
+
+- **Squad (season-level social layer):**
+  - Persistent group/clan identity across many matches and rooms.
+  - Users join/create a squad once, then continue participating in multiple rooms.
+  - Squad leaderboard reflects aggregate activity/performance over time.
+
+- **Relationship:**
+  - A user places predictions inside **Watch Rooms**.
+  - The same user can simultaneously represent a **Squad**.
+  - Room outcomes drive immediate payouts; cumulative behavior contributes to squad-level ranking and social competition.
+
+### Example User Journey
+
+1. Connect wallet on X Layer Testnet.
+2. Create or join a **Squad** (optional but recommended for social competition).
+3. Open a match and create/join a **Watch Room**.
+4. Use AI Co-Pilot, submit prediction, and stake OKB.
+5. After oracle/admin resolution, claim room payout.
+6. Repeat across matches while building long-term squad leaderboard momentum.
 
 ---
 
@@ -128,8 +156,30 @@ This launches a 1-to-2 minute guided tour scrolling through all core landing pag
   * **X Layer Network:** [web3.okx.com/xlayer](https://web3.okx.com/xlayer)
   * **Onchain OS SDK:** [web3.okx.com/onchainos](https://web3.okx.com/onchainos)
   * **Developer Portal:** [web3.okx.com/onchainos/dev-portal](https://web3.okx.com/onchainos/dev-portal)
-* **Target Network:** X Layer Testnet (Chain ID 195)
+* **Target Network:** X Layer Testnet (Chain ID 1952)
 * **Gas-Optimization:** x402 Zero-gas signature vouchers.
+
+### On-chain Verification Proof (Judges)
+
+Run the proof script:
+
+```bash
+npm --prefix contracts run verify:proof:testnet
+```
+
+Expected success footer:
+
+```text
+[PASS] V4_POOLMANAGER_ADDRESS: 0x...
+[PASS] V4_HOOK_ADDRESS: 0x...
+[PASS] CONTRACT_ADDRESS: 0x...
+[PASS] HOOK_LOW14_BITS: 0x00c0 (expected 0x00c0)
+VERIFICATION_RESULT: PASS
+```
+
+Notes:
+- Keep contract addresses visible in submission materials. Judges need verifiable on-chain proof.
+- Never expose private keys, seed phrases, or API secrets.
 
 ---
 

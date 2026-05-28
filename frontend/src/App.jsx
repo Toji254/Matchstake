@@ -1,7 +1,7 @@
 import React from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
-import { injected } from 'wagmi/connectors';
+import toast from 'react-hot-toast';
 import Home from './pages/Home';
 import Matches from './pages/Matches';
 import Room from './pages/Room';
@@ -14,17 +14,29 @@ import Squads from './pages/Squads';
 import AgentOps from './pages/AgentOps';
 import ShareRoom from './pages/ShareRoom';
 import Submission from './pages/Submission';
+import Playground from './pages/Playground';
+import MatchRooms from './pages/MatchRooms';
 
 import ErrorBoundary from './components/ErrorBoundary';
 import DemoTour from './components/DemoTour';
 import NetworkGuard from './components/NetworkGuard';
+import TransactionLedgerPanel from './components/TransactionLedgerPanel';
 
 function AppNav() {
   const location = useLocation();
   const { address, isConnected } = useAccount();
-  const { connect } = useConnect();
+  const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
   const shortAddr = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '';
+  const defaultConnector = connectors?.[0];
+
+  const handleConnect = () => {
+    if (!defaultConnector) {
+      toast.error('No wallet connector available. Please refresh and try again.');
+      return;
+    }
+    connect({ connector: defaultConnector });
+  };
 
   // Don't render nav on home page (Hero has its own nav)
   if (location.pathname === '/') return null;
@@ -39,6 +51,7 @@ function AppNav() {
     { label: 'MY TICKETS', path: '/collection' },
     { label: 'SWAP', path: '/swap' },
     { label: 'SUBMISSION', path: '/submission' },
+    { label: 'PLAYGROUND', path: '/playground' },
   ];
 
   return (
@@ -68,7 +81,7 @@ function AppNav() {
               ● {shortAddr}
             </button>
           ) : (
-            <button className="wallet-btn" onClick={() => connect({ connector: injected() })}>
+            <button className="wallet-btn" onClick={handleConnect}>
               Connect Wallet
             </button>
           )}
@@ -95,11 +108,14 @@ function App() {
           <Route path="/swap" element={<Swap />} />
           <Route path="/share/:roomId" element={<ShareRoom />} />
           <Route path="/submission" element={<Submission />} />
+          <Route path="/playground" element={<Playground />} />
+          <Route path="/match/:matchId/rooms" element={<MatchRooms />} />
           <Route path="/facility/:slug" element={<FacilityDetail />} />
         </Routes>
       </ErrorBoundary>
       <DemoTour />
       <NetworkGuard />
+      <TransactionLedgerPanel />
     </>
   );
 }

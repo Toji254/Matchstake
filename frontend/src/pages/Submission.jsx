@@ -1,12 +1,21 @@
 import React from 'react';
-import { CONTRACT_ADDRESS, NFT_ADDRESS } from '../config/contract';
+import {
+  CONTRACT_ADDRESS,
+  NFT_ADDRESS,
+  V4_POOLMANAGER_ADDRESS,
+  V4_HOOK_ADDRESS,
+  V4_POOL_CURRENCY0,
+  V4_POOL_CURRENCY1,
+  V4_HOOK_DEPLOY_TX,
+  V4_POOL_INIT_TX,
+} from '../config/contract';
 import { TARGET_CHAIN } from '../config/wagmi';
 
 const checklist = [
   ['World Cup theme', 'Prediction rooms, watch parties, squads, dynamic ticket NFTs'],
   ['X Layer deployment', 'Contracts deployable via demo.sh; frontend guarded to X Layer Testnet'],
-  ['Exchange OS integration', 'Permissionless outcome market venue deployer with institutional matching'],
-  ['Onchain OS integration', 'NLP natural language trade engine, plug-and-play Skills, x402 zero-gas'],
+  ['Exchange OS (Sandbox)', 'Conceptual market venue deployer mapping upcoming institutional matching specs'],
+  ['Onchain OS integration', 'Fully integrated OKX Onchain OS Skills framework supporting real CLI commands, wallet portfolio querying, aggregated DEX swaps, and payment dispatcher protocols.'],
   ['Prediction market / SocialFi', 'Private pools, friend invites, score staking, transparent payouts'],
   ['Trading', 'OKX DEX aggregator swap routing for OKB liquidity on X Layer'],
   ['NFT / GameFi', 'Proof-of-prediction LiveHype NFTs and squad leaderboard'],
@@ -20,6 +29,11 @@ export default function Submission() {
   const explorer = TARGET_CHAIN.blockExplorers.default.url;
   const matchstakeUrl = `${explorer}/address/${CONTRACT_ADDRESS}`;
   const nftUrl = `${explorer}/address/${NFT_ADDRESS}`;
+  const v4PoolManagerUrl = `${explorer}/address/${V4_POOLMANAGER_ADDRESS}`;
+  const v4HookUrl = `${explorer}/address/${V4_HOOK_ADDRESS}`;
+  const v4HookTxUrl = `${explorer}/tx/${V4_HOOK_DEPLOY_TX}`;
+  const v4InitTxUrl = `${explorer}/tx/${V4_POOL_INIT_TX}`;
+  const v4Currency1Url = `${explorer}/address/${V4_POOL_CURRENCY1}`;
 
   return (
     <main className="page-content">
@@ -61,6 +75,12 @@ export default function Submission() {
                 <div className="proof-row"><span>Target chain</span><strong>{TARGET_CHAIN.name} ({TARGET_CHAIN.id})</strong></div>
                 <div className="proof-row"><span>MatchStake</span><a href={matchstakeUrl} target="_blank" rel="noreferrer">{CONTRACT_ADDRESS}</a></div>
                 <div className="proof-row"><span>Prediction NFT</span><a href={nftUrl} target="_blank" rel="noreferrer">{NFT_ADDRESS}</a></div>
+                <div className="proof-row"><span>Uniswap v4 PoolManager</span><a href={v4PoolManagerUrl} target="_blank" rel="noreferrer">{V4_POOLMANAGER_ADDRESS}</a></div>
+                <div className="proof-row"><span>Uniswap v4 Hook</span><a href={v4HookUrl} target="_blank" rel="noreferrer">{V4_HOOK_ADDRESS}</a></div>
+                <div className="proof-row"><span>v4 hook deploy tx</span><a href={v4HookTxUrl} target="_blank" rel="noreferrer">{V4_HOOK_DEPLOY_TX}</a></div>
+                <div className="proof-row"><span>v4 pool init tx</span><a href={v4InitTxUrl} target="_blank" rel="noreferrer">{V4_POOL_INIT_TX}</a></div>
+                <div className="proof-row"><span>v4 pool currency0</span><strong>{V4_POOL_CURRENCY0} (native OKB)</strong></div>
+                <div className="proof-row"><span>v4 pool currency1</span><a href={v4Currency1Url} target="_blank" rel="noreferrer">{V4_POOL_CURRENCY1}</a></div>
                 <div className="proof-row"><span>Demo route</span><a href="/?demo=true">/?demo=true</a></div>
                 <div className="proof-row"><span>Share route</span><a href="/share/1">/share/1</a></div>
               </div>
@@ -68,7 +88,7 @@ export default function Submission() {
               <div style={{ marginTop: 28, padding: 18, border: '1px solid var(--border-light)' }}>
                 <div style={{ fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}>Custom Uniswap V4 Hook</div>
                 <p style={{ color: 'var(--text-dim)', fontSize: '0.74rem', lineHeight: 1.7 }}>
-                  MatchStake includes `FanLiquidityHook.sol`: an AI-managed social prediction hook. The AI co-pilot's match confidence/upset-risk signal adjusts dynamic fee credits, swap activity funds room rewards, prediction liquidity routes into HOME/AWAY/DRAW buckets, and hook events sync dynamic NFT ticket state. Built on Exchange OS & Onchain OS for X Layer deployment.
+                  MatchStake includes a real Uniswap v4 hook deployment on X Layer Testnet. The hook implements v4 swap callbacks to support AI-managed dynamic fees and after-swap fan-credit accounting, wired to a v4 pool with native OKB (currency0 = address(0)). See the PoolManager + Hook + init tx links above for verifiable on-chain proof.
                 </p>
               </div>
 

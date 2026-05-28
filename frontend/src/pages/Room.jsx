@@ -3,19 +3,22 @@ import { useParams, Link } from 'react-router-dom';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { parseEther, formatEther } from 'viem';
 import toast from 'react-hot-toast';
-import { CONTRACT_ADDRESS, CONTRACT_ABI, parseContractError } from '../config/contract';
+import { CONTRACT_ADDRESS, CONTRACT_ABI, parseContractError, checkDemoMode } from '../config/contract';
+import { TARGET_CHAIN_ID } from '../config/wagmi';
 import AIAgent from '../components/AIAgent';
 import AgentActionConsole from '../components/AgentActionConsole';
 import LiveHypeNFT from '../components/LiveHypeNFT';
 import RoomChat from '../components/RoomChat';
+import { trackTransaction } from '../utils/txLedger';
 
 export default function Room() {
   const { roomId } = useParams();
   
-  const isDemo = window.location.search.includes('demo=true');
-  const { address: realAddress, isConnected: realIsConnected } = useAccount();
+  const isDemo = checkDemoMode();
+  const { address: realAddress, isConnected: realIsConnected, chain } = useAccount();
   const isConnected = isDemo ? true : realIsConnected;
   const address = isDemo ? (realAddress || '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266') : realAddress;
+  const isWrongChain = !chain || chain.id !== TARGET_CHAIN_ID;
 
   // Demo interactive states
   const [demoJoined, setDemoJoined] = useState(false);
@@ -157,14 +160,27 @@ export default function Room() {
       return;
     }
     if (!isConnected) { toast.error('Connect wallet first!'); return; }
+    if (isWrongChain) {
+      toast.error('Please switch your wallet network to X Layer Testnet first!');
+      return;
+    }
     joinRoomWrite({
       address: CONTRACT_ADDRESS,
       abi: CONTRACT_ABI,
       functionName: 'joinRoom',
       args: [BigInt(roomId)],
     }, {
-      onSuccess: () => {
-        toast.success('Joined Watch Party on X Layer! 🤝');
+      onSuccess: (hash) => {
+        trackTransaction({ hash, action: `Join Room #${roomId}`, category: 'main' });
+        toast.success(
+          <span>
+            Joined Watch Party on X Layer! 🤝{' '}
+            <a href={`https://www.oklink.com/xlayer-test/tx/${hash}`} target="_blank" rel="noreferrer" style={{ textDecoration: 'underline', color: '#22c55e', marginLeft: 8, fontWeight: 700 }}>
+              [VIEW TX]
+            </a>
+          </span>,
+          { duration: 8000 }
+        );
         refetchMembers();
       },
       onError: (err) => {
@@ -180,6 +196,20 @@ export default function Room() {
       toast.error(`Stake must be between ${room.minStake} and ${room.maxStake} OKB`);
       return;
     }
+
+    // Input validations
+    const stakeNum = parseFloat(stakeAmount);
+    if (isNaN(stakeNum) || stakeNum <= 0) {
+      toast.error('Stake amount must be a positive number greater than 0.');
+      return;
+    }
+    const homeScoreInt = parseInt(homeScore, 10);
+    const awayScoreInt = parseInt(awayScore, 10);
+    if (isNaN(homeScoreInt) || homeScoreInt < 0 || isNaN(awayScoreInt) || awayScoreInt < 0) {
+      toast.error('Scores must be positive integers.');
+      return;
+    }
+
     if (isDemo) {
       toast.success('Prediction Locked on X Layer! 🎯 (MOCK)');
       setDemoPrediction({
@@ -193,6 +223,10 @@ export default function Room() {
       return;
     }
     if (!isConnected) { toast.error('Connect wallet first!'); return; }
+    if (isWrongChain) {
+      toast.error('Please switch your wallet network to X Layer Testnet first!');
+      return;
+    }
     const result = getResult(homeScore, awayScore);
     predictWrite({
       address: CONTRACT_ADDRESS,
@@ -201,8 +235,17 @@ export default function Room() {
       args: [BigInt(roomId), result, homeScore, awayScore],
       value: parseEther(stakeAmount),
     }, {
-      onSuccess: () => {
-        toast.success('Prediction Locked on X Layer! 🎯');
+      onSuccess: (hash) => {
+        trackTransaction({ hash, action: `Prediction in Room #${roomId}`, category: 'main' });
+        toast.success(
+          <span>
+            Prediction Locked on X Layer! 🎯{' '}
+            <a href={`https://www.oklink.com/xlayer-test/tx/${hash}`} target="_blank" rel="noreferrer" style={{ textDecoration: 'underline', color: '#22c55e', marginLeft: 8, fontWeight: 700 }}>
+              [VIEW TX]
+            </a>
+          </span>,
+          { duration: 8000 }
+        );
         refetchPrediction();
         refetchRoom();
       },
@@ -224,14 +267,27 @@ export default function Room() {
       }
       return;
     }
+    if (isWrongChain) {
+      toast.error('Please switch your wallet network to X Layer Testnet first!');
+      return;
+    }
     claimWrite({
       address: CONTRACT_ADDRESS,
       abi: CONTRACT_ABI,
       functionName: 'claimWinnings',
       args: [BigInt(roomId)],
     }, {
-      onSuccess: () => {
-        toast.success('Winnings Claimed on X Layer! 💰');
+      onSuccess: (hash) => {
+        trackTransaction({ hash, action: `Claim Winnings Room #${roomId}`, category: 'main' });
+        toast.success(
+          <span>
+            Winnings Claimed on X Layer! 💰{' '}
+            <a href={`https://www.oklink.com/xlayer-test/tx/${hash}`} target="_blank" rel="noreferrer" style={{ textDecoration: 'underline', color: '#22c55e', marginLeft: 8, fontWeight: 700 }}>
+              [VIEW TX]
+            </a>
+          </span>,
+          { duration: 8000 }
+        );
         refetchPrediction();
       },
       onError: (err) => {
@@ -515,7 +571,7 @@ export default function Room() {
                         </div>
                       ) : (
                         <p style={{ color: 'var(--text-dimmer)', fontSize: '0.78rem' }}>
-                          Your prediction did not win this time. Better luck in the next matchWatch!
+                        Your prediction did not win this time. Better luck in the next match!
                         </p>
                       )}
                     </div>

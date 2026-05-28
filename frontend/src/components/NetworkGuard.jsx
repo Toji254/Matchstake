@@ -12,7 +12,7 @@ export default function NetworkGuard() {
   // If not connected, nothing to show
   if (!isConnected) return null;
 
-  const isWrongChain = chain && chain.id !== TARGET_CHAIN_ID;
+  const isWrongChain = !chain || chain.id !== TARGET_CHAIN_ID;
 
   // Banner: wrong network
   if (isWrongChain) {
@@ -39,7 +39,7 @@ export default function NetworkGuard() {
         borderTop: '1px solid rgba(255,255,255,0.2)',
       }}>
         <span>
-          <strong>⚠ WRONG NETWORK</strong> — You are on <strong>{chain?.name || `Chain ${chain?.id}`}</strong>.
+          <strong>⚠ WRONG NETWORK</strong> — You are on <strong>{chain?.name || 'Unsupported Network'}</strong>.
           MatchStake requires <strong>{TARGET_CHAIN.name}</strong> (Chain ID {TARGET_CHAIN_ID}).
         </span>
         <button

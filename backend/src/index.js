@@ -8,6 +8,7 @@ import predictionRoutes from './routes/prediction.js';
 import matchRoutes from './routes/match.js';
 import watchPartyRoutes from './routes/watchParty.js';
 import swapRoutes from './routes/swap.js';
+import playgroundRoutes from './routes/playground.js';
 
 const app = express();
 const server = createServer(app);
@@ -21,6 +22,7 @@ app.use('/api/prediction', predictionRoutes);
 app.use('/api/match', matchRoutes);
 app.use('/api/watch-party', watchPartyRoutes);
 app.use('/api/swap', swapRoutes);
+app.use('/api/playground', playgroundRoutes);
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok', timestamp: Date.now() }));
 

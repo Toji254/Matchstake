@@ -1,10 +1,10 @@
 import React, { useMemo } from 'react';
 import { useAccount, useReadContract, useReadContracts } from 'wagmi';
-import { NFT_ADDRESS, NFT_ABI } from '../config/contract';
+import { NFT_ADDRESS, NFT_ABI, checkDemoMode } from '../config/contract';
 import { formatEther } from 'viem';
 
 export default function Collection() {
-  const isDemo = window.location.search.includes('demo=true');
+  const isDemo = checkDemoMode();
   const { address: realAddress, isConnected: realIsConnected } = useAccount();
   const isConnected = isDemo ? true : realIsConnected;
   const address = isDemo ? (realAddress || '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266') : realAddress;

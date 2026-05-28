@@ -5,10 +5,16 @@
     "compile": "npx hardhat compile",
     "test": "npx hardhat test",
     "deploy:testnet": "npx hardhat run scripts/deploy.js --network xlayer_testnet",
-    "deploy:mainnet": "npx hardhat run scripts/deploy.js --network xlayer_mainnet"
+    "deploy:mainnet": "npx hardhat run scripts/deploy.js --network xlayer_mainnet",
+    "deploy:v4:testnet": "npx hardhat run scripts/deploy_v4.js --network xlayer_testnet",
+    "verify:proof:testnet": "node scripts/verify_onchain_proof.js"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "dotenv": "^16.4.5",
     "hardhat": "^2.22.0"
+  },
+  "dependencies": {
+    "solmate": "^6.8.0"
   }
 }

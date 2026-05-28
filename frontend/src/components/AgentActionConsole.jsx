@@ -85,7 +85,7 @@ export default function AgentActionConsole({ compact = false, matchLabel = 'Fran
             Safety-gated match co-pilot
           </h2>
           <p style={{ color: 'var(--text-dim)', fontSize: '0.78rem', maxWidth: '68ch', lineHeight: 1.8 }}>
-            Persistent agent flow for {matchLabel} integrated via OKX Onchain OS Skills & Exchange OS permissionless outcome matching engines: 
+            Persistent agent flow for {matchLabel} modelled on upcoming OKX Onchain OS Skills & Exchange OS matching engine specifications: 
             room chat sync, prediction advice, OKX DEX routing, OKB staking, reward claims, and dynamic NFT updates. Every value-moving action stays user-approved.
           </p>
         </div>

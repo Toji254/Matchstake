@@ -151,6 +151,7 @@ export default function DemoTour() {
     if (params.get('demo') === 'true' && !isActive) {
       setIsActive(true);
       setCurrentStep(0);
+      sessionStorage.setItem('matchstake_demo_mode', 'true');
     }
   }, [location.search]);
 
@@ -159,6 +160,7 @@ export default function DemoTour() {
     if (!isActive) return;
     if (currentStep >= DEMO_STEPS.length) {
       setIsActive(false);
+      sessionStorage.removeItem('matchstake_demo_mode');
       return;
     }
 
@@ -261,6 +263,7 @@ export default function DemoTour() {
     clearTimeout(timerRef.current);
     if (progressRef.current) cancelAnimationFrame(progressRef.current);
     setIsActive(false);
+    sessionStorage.removeItem('matchstake_demo_mode');
     navigate('/');
   };
 
@@ -279,7 +282,9 @@ export default function DemoTour() {
     setCurrentStep((prev) => prev - 1);
   };
 
-  if (!isActive || currentStep >= DEMO_STEPS.length) return null;
+  if (!isActive || currentStep >= DEMO_STEPS.length) {
+    return null;
+  }
 
   const step = DEMO_STEPS[currentStep];
 

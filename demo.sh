@@ -52,6 +52,12 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Free up ports 3000 and 3001 if they are in use
+if command -v lsof &>/dev/null; then
+  kill -9 $(lsof -t -i:3000) 2>/dev/null || true
+  kill -9 $(lsof -t -i:3001) 2>/dev/null || true
+fi
+
 # ============================================
 # STEP 1: Check dependencies
 # ============================================
@@ -120,8 +126,8 @@ echo -e "${CYAN}[04/06]${NC} Deploying smart contracts to X Layer Testnet..."
 DEPLOY_OUTPUT=$(cd "$CONTRACTS_DIR" && npx hardhat run scripts/deploy.js --network xlayer_testnet 2>&1) || true
 
 # Extract addresses from deploy output
-MATCHSTAKE_ADDR=$(echo "$DEPLOY_OUTPUT" | grep -oP '0x[a-fA-F0-9]{40}' | head -1)
-NFT_ADDR=$(echo "$DEPLOY_OUTPUT" | grep -oP '0x[a-fA-F0-9]{40}' | tail -1)
+MATCHSTAKE_ADDR=$(echo "$DEPLOY_OUTPUT" | grep -i 'MatchStake deployed to:' | grep -oP '0x[a-fA-F0-9]{40}' | head -1)
+NFT_ADDR=$(echo "$DEPLOY_OUTPUT" | grep -i 'PredictionNFT deployed to:' | grep -oP '0x[a-fA-F0-9]{40}' | head -1)
 
 if [ -n "$MATCHSTAKE_ADDR" ] && [ -n "$NFT_ADDR" ] && [[ "$MATCHSTAKE_ADDR" != "$NFT_ADDR" ]]; then
   echo -e "  ${GREEN}✓ MatchStake deployed: ${WHITE}$MATCHSTAKE_ADDR${NC}"
@@ -144,9 +150,10 @@ fi
 echo ""
 echo -e "${CYAN}[05/06]${NC} Seeding World Cup match data on testnet..."
 
+
 if [ -n "$MATCHSTAKE_ADDR" ]; then
-  # Create a seed script
-  cat > /tmp/seed_matches.js << 'SEEDEOF'
+  # Create a seed script inside the contracts folder for correct module resolution
+  cat > "$CONTRACTS_DIR/seed_matches.js" << 'SEEDEOF'
 const { ethers } = require("hardhat");
 
 async function main() {
@@ -181,9 +188,11 @@ async function main() {
 main().catch(console.error);
 SEEDEOF
 
-  MATCHSTAKE_ADDR=$MATCHSTAKE_ADDR npx hardhat run /tmp/seed_matches.js --network xlayer_testnet 2>&1 \
+  (cd "$CONTRACTS_DIR" && MATCHSTAKE_ADDR=$MATCHSTAKE_ADDR npx hardhat run seed_matches.js --network xlayer_testnet 2>&1) \
     | while IFS= read -r line; do echo -e "  ${DIM}$line${NC}"; done || true
   
+  rm -f "$CONTRACTS_DIR/seed_matches.js"
+
   echo -e "  ${GREEN}✓ Demo data seeded${NC}"
 else
   echo -e "  ${GOLD}⚠ Skipping seed (no contract). App has built-in demo data.${NC}"
@@ -247,16 +256,20 @@ echo -e "  ${WHITE}01${NC} Landing page — Premium editorial UI/UX"
 echo -e "  ${WHITE}02${NC} How It Works — 4-step social staking flow"
 echo -e "  ${WHITE}03${NC} Host Stadiums — World Cup 2026 venue explorer"
 echo -e "  ${WHITE}04${NC} Match Schedule — On-chain data from smart contract"
-echo -e "  ${WHITE}05${NC} Create Room — Watch party with custom stake ranges"
-echo -e "  ${WHITE}06${NC} AI Co-Pilot — Match prediction agent (AI Track)"
-echo -e "  ${WHITE}07${NC} Room Config — Smart contract write (createRoom)"
-echo -e "  ${WHITE}08${NC} Room Detail — Join, predict, and stake OKB"
-echo -e "  ${WHITE}09${NC} Prediction + NFT — Dynamic NFT ticket mint"
-echo -e "  ${WHITE}10${NC} Collection — On-chain NFT prediction tickets"
-echo -e "  ${WHITE}11${NC} Leaderboard — Global on-chain rankings"
-echo -e "  ${WHITE}12${NC} Squad Arena — Team GameFi features"
-echo -e "  ${WHITE}13${NC} OKX DEX Swap — Get OKB via DEX aggregator"
-echo -e "  ${WHITE}14${NC} Summary — All tracks covered"
+echo -e "  ${WHITE}05${NC} Agent Ops — Exchange OS + Onchain OS integration hub"
+echo -e "  ${WHITE}06${NC} Create Room — Watch party with custom stake ranges"
+echo -e "  ${WHITE}07${NC} AI Co-Pilot — Match prediction agent (AI Track)"
+echo -e "  ${WHITE}08${NC} Room Config — Smart contract write (createRoom)"
+echo -e "  ${WHITE}09${NC} Room Detail — Join, predict, and stake OKB"
+echo -e "  ${WHITE}10${NC} Prediction + NFT — Dynamic NFT ticket mint"
+echo -e "  ${WHITE}11${NC} Collection — On-chain NFT prediction tickets"
+echo -e "  ${WHITE}12${NC} Leaderboard — Global on-chain rankings"
+echo -e "  ${WHITE}13${NC} Squad Arena — Team GameFi features"
+echo -e "  ${WHITE}14${NC} Viral Share Card — Social loop / X/Twitter post"
+echo -e "  ${WHITE}15${NC} Submission Proof — Judge pack & requirements map"
+echo -e "  ${WHITE}16${NC} OKX DEX Swap — Get OKB via DEX aggregator"
+echo -e "  ${WHITE}17${NC} Playground — Seed matches, resolve matches & create squads on-chain"
+echo -e "  ${WHITE}18${NC} Summary — All tracks covered"
 echo ""
 
 # Keep script alive

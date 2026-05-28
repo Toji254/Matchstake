@@ -1,17 +1,26 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
-import { injected } from 'wagmi/connectors';
+import toast from 'react-hot-toast';
 import AsciiCanvas from '../components/AsciiCanvas';
 import { heroConfig, navigationConfig } from '../config/siteConfig';
 
 export default function Hero() {
   const notes = heroConfig.supportingNotes.slice(0, 3);
   const { address, isConnected } = useAccount();
-  const { connect } = useConnect();
+  const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
   const shortAddr = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '';
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const defaultConnector = connectors?.[0];
+
+  const handleConnect = () => {
+    if (!defaultConnector) {
+      toast.error('No wallet connector available. Please refresh and try again.');
+      return;
+    }
+    connect({ connector: defaultConnector });
+  };
 
   return (
     <section id="hero" className="hero-split">
@@ -65,7 +74,7 @@ export default function Hero() {
           ) : (
             <button
               className="wallet-btn"
-              onClick={() => connect({ connector: injected() })}
+              onClick={handleConnect}
             >
               Connect Wallet
             </button>

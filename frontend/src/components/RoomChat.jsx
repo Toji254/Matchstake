@@ -94,39 +94,67 @@ export default function RoomChat({ homeTeam, awayTeam, onSelectPrediction }) {
     setMessages((prev) => [...prev, newMsg]);
     setInputVal('');
 
-    // Trigger AI Co-Pilot immediate responsive feedback
-    setTimeout(() => {
+    const appendAgentReply = (aiText, aiAction) => {
       const aiTime = new Date().toTimeString().split(' ')[0];
-      let aiText = `🤖 [ONCHAINOS INTERACTION] Analyzing your intent... `;
-      let aiAction = null;
-
-      const textLower = userText.toLowerCase();
-      if (textLower.includes('predict') || textLower.includes('score') || textLower.includes('win') || textLower.includes('draw')) {
-        aiText += `Tactical models indicate a highly competitive setup. Recommended outcome: 2-2 Draw. Stake OKB securely with zero-gas signature.`;
-        aiAction = { type: 'suggest', home: 2, away: 2, label: 'AUTO-FILL 2-2 DRAW' };
-      } else if (textLower.includes('swap') || textLower.includes('dex') || textLower.includes('okb') || textLower.includes('gas')) {
-        aiText += `OKX DEX Aggregator rates: 1 ETH ≈ 58.5 OKB. Direct X Layer swap prepared. Zero-gas x402 voucher available.`;
-        aiAction = { type: 'swap', label: 'ROUTE DEX SWAP' };
-      } else if (textLower.includes('nft') || textLower.includes('ticket') || textLower.includes('hype')) {
-        aiText += `Dynamic SVG metadata automatically syncs with live match events. Refreshing oracle status...`;
-      } else {
-        aiText += `Watch Party room synchronized. Ready to route predictions, secure stakes, and update dynamic NFTs autonomously.`;
-      }
-
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now() + 1,
           sender: 'MATCHSTAKE_CO_PILOT',
           time: aiTime,
-          text: aiText,
+          text: `🤖 [GEMINI CO-PILOT] ${aiText}`,
           isAgent: true,
-          action: aiAction
-        }
+          action: aiAction,
+        },
       ]);
-
       toast.success('AI Co-Pilot responded in chat! 🤖');
-    }, 1500);
+    };
+
+    (async () => {
+      try {
+        const res = await fetch('/api/prediction/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            homeTeam: homeTeam || 'Home',
+            awayTeam: awayTeam || 'Away',
+            message: userText,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Chat API failed');
+
+        let aiAction = null;
+        const textLower = userText.toLowerCase();
+        if (
+          Number.isFinite(data.suggestedHome) &&
+          Number.isFinite(data.suggestedAway)
+        ) {
+          aiAction = {
+            type: 'suggest',
+            home: data.suggestedHome,
+            away: data.suggestedAway,
+            label: `AUTO-FILL ${data.suggestedHome}-${data.suggestedAway}`,
+          };
+        } else if (textLower.includes('swap') || textLower.includes('dex') || textLower.includes('okb')) {
+          aiAction = { type: 'swap', label: 'ROUTE DEX SWAP' };
+        }
+
+        appendAgentReply(data.reply, aiAction);
+      } catch {
+        const textLower = userText.toLowerCase();
+        let aiText = 'Watch party synced — ready for predictions and stakes.';
+        let aiAction = null;
+        if (textLower.includes('predict') || textLower.includes('score')) {
+          aiText = 'Tactical read: 2-2 draw is a solid stake candidate for this clash.';
+          aiAction = { type: 'suggest', home: 2, away: 2, label: 'AUTO-FILL 2-2 DRAW' };
+        } else if (textLower.includes('swap') || textLower.includes('okb')) {
+          aiText = 'Route OKB via the Swap page — OKX DEX aggregator on X Layer.';
+          aiAction = { type: 'swap', label: 'ROUTE DEX SWAP' };
+        }
+        appendAgentReply(aiText, aiAction);
+      }
+    })();
   };
 
   const handleAction = (action) => {

@@ -1,7 +1,16 @@
 // MatchStake Contract Configuration
 // Addresses are injected by the deploy script (start-testnet.sh).
-export const CONTRACT_ADDRESS = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
-export const NFT_ADDRESS = '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512';
+export const CONTRACT_ADDRESS = '0xB60E8451E89Dd40D941fffE43815DBD189Da4fd0';
+export const NFT_ADDRESS = '0x127EB6cD9DE956e95312CA9fC181f5eC1879F210';
+
+// Uniswap v4 proof (X Layer Testnet)
+// Deployed via: contracts/scripts/deploy_v4.js
+export const V4_POOLMANAGER_ADDRESS = '0xAc7Ae1DDF61cfC7ece2e603937a872Fb361Aaf2f';
+export const V4_HOOK_ADDRESS = '0xC74A52aBb0be701dA73B72063e57A20bf5Eb40c0';
+export const V4_POOL_CURRENCY0 = '0x0000000000000000000000000000000000000000'; // native OKB (gas token)
+export const V4_POOL_CURRENCY1 = '0xf7B3dD611172d8bD32A346907f9f86cA40724553'; // MockERC20 "MSD"
+export const V4_HOOK_DEPLOY_TX = '0x714486814e6db7061886343d581025914fe51bde9d2751efcf3ce04beec81ad8';
+export const V4_POOL_INIT_TX = '0xb3cede709d6014575096cb770b8952b626e18e7c42ce52a90fcd927a5c6f6b7c';
 
 export const CONTRACT_ABI = [
   // Match Management
@@ -432,7 +441,7 @@ export function parseContractError(err, fallback = 'Transaction failed') {
     return 'Insufficient OKB balance. Get testnet OKB from the X Layer faucet.';
   }
   if (lower.includes('chain mismatch') || lower.includes('wrong network') || lower.includes('chain id')) {
-    return 'Wrong network. Please switch to X Layer Testnet (Chain ID 195).';
+    return 'Wrong network. Please switch to X Layer Testnet (Chain ID 1952).';
   }
   if (lower.includes('nonce')) {
     return 'Nonce error. Try resetting your wallet activity in settings.';
@@ -448,3 +457,19 @@ export function parseContractError(err, fallback = 'Transaction failed') {
   }
   return raw || fallback;
 }
+
+// Helper: check if the app is currently in demo/tour mode
+export function checkDemoMode() {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  const demoUrl = params.get('demo');
+  if (demoUrl === 'true') {
+    sessionStorage.setItem('matchstake_demo_mode', 'true');
+    return true;
+  } else if (demoUrl === 'false') {
+    sessionStorage.removeItem('matchstake_demo_mode');
+    return false;
+  }
+  return sessionStorage.getItem('matchstake_demo_mode') === 'true';
+}
+

@@ -1,6 +1,6 @@
 const OKX_DEX_QUOTE_URL = 'https://www.okx.com/api/v1/dex/aggregator/quote';
 
-export async function getSwapQuote({ fromToken, toToken, amount, chainId = 196 }) {
+export async function getSwapQuote({ fromToken, toToken, amount, chainId = 195 }) {
   const params = new URLSearchParams({
     fromToken: fromToken,
     toToken: toToken,

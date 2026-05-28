@@ -37,11 +37,11 @@ cd "$CONTRACTS_DIR"
 DEPLOY_OUTPUT=$(npx hardhat run scripts/deploy.js --network xlayer_testnet 2>&1)
 echo "$DEPLOY_OUTPUT"
 
-MATCHSTAKE_ADDR=$(echo "$DEPLOY_OUTPUT" | grep -oP '0x[a-fA-F0-9]{40}' | head -1)
-NFT_ADDR=$(echo "$DEPLOY_OUTPUT" | grep -oP '0x[a-fA-F0-9]{40}' | tail -1)
+MATCHSTAKE_ADDR=$(echo "$DEPLOY_OUTPUT" | grep -i 'MatchStake deployed to:' | grep -oP '0x[a-fA-F0-9]{40}' | head -1)
+NFT_ADDR=$(echo "$DEPLOY_OUTPUT" | grep -i 'PredictionNFT deployed to:' | grep -oP '0x[a-fA-F0-9]{40}' | head -1)
 
-if [ -z "$MATCHSTAKE_ADDR" ]; then
-  echo -e "${RED}Deployment failed. See output above.${NC}"
+if [ -z "$MATCHSTAKE_ADDR" ] || [ -z "$NFT_ADDR" ] || [[ "$MATCHSTAKE_ADDR" == "$NFT_ADDR" ]]; then
+  echo -e "${RED}Deployment failed or addresses matched. See output above.${NC}"
   exit 1
 fi
 
@@ -50,8 +50,8 @@ sed -i "s|export const CONTRACT_ADDRESS = '.*'|export const CONTRACT_ADDRESS = '
 sed -i "s|export const NFT_ADDRESS = '.*'|export const NFT_ADDRESS = '$NFT_ADDR'|" "$FRONTEND_DIR/src/config/contract.js"
 
 echo -e "\n${CYAN}[2/3] Seeding demo matches on testnet...${NC}"
-# Reusing the seed script logic from demo.sh
-cat > /tmp/seed_testnet.js << 'EOF'
+# Create a seed script inside the contracts folder for correct module resolution
+cat > "$CONTRACTS_DIR/seed_testnet.js" << 'EOF'
 const { ethers } = require("hardhat");
 async function main() {
   const contractAddress = process.env.MATCHSTAKE_ADDR;
@@ -62,14 +62,20 @@ async function main() {
     ["USA", "Morocco", Math.floor(Date.now()/1000) + 172800],
   ];
   for (const [home, away, kickoff] of matches) {
-    const tx = await MatchStake.createMatch(home, away, kickoff);
-    await tx.wait();
-    console.log(`  ✓ ${home} vs ${away}`);
+    try {
+      const tx = await MatchStake.createMatch(home, away, kickoff);
+      await tx.wait();
+      console.log(`  ✓ ${home} vs ${away}`);
+    } catch (e) {
+      console.log(`  ⚠ ${home} vs ${away} failed (might already exist):`, e.message);
+    }
   }
 }
 main().catch(console.error);
 EOF
-MATCHSTAKE_ADDR=$MATCHSTAKE_ADDR npx hardhat run /tmp/seed_testnet.js --network xlayer_testnet
+
+(cd "$CONTRACTS_DIR" && MATCHSTAKE_ADDR=$MATCHSTAKE_ADDR npx hardhat run seed_testnet.js --network xlayer_testnet)
+rm -f "$CONTRACTS_DIR/seed_testnet.js"
 
 echo -e "\n${CYAN}[3/3] Starting Backend and Frontend...${NC}"
 

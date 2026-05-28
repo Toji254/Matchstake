@@ -75,16 +75,16 @@ const ANALYSIS_DATA = {
   }
 };
 
-const getAnalysis = (home, away) => {
+const getFallbackAnalysis = (home, away) => {
   const h = (home || 'TEAM A').trim().toLowerCase();
   const a = (away || 'TEAM B').trim().toLowerCase();
-  
+
   for (const key of Object.keys(ANALYSIS_DATA)) {
     if (key.includes(h) && key.includes(a)) {
       return ANALYSIS_DATA[key];
     }
   }
-  
+
   return {
     h2h: 'STYLISH TACTICAL MATCHUP. HISTORICAL RECORDS ARE ROUGHLY BALANCED.',
     form: `${home.toUpperCase()}: W-D-L-W-D (TACTICAL STABILIZATION). ${away.toUpperCase()}: W-W-D-L-W (FAST COUNTER-OUTLETS).`,
@@ -92,25 +92,56 @@ const getAnalysis = (home, away) => {
     predictedScore: '2 - 1',
     predictedHome: 2,
     predictedAway: 1,
-    confidence: '62'
+    confidence: '62',
+    provider: 'local',
   };
 };
+
+function mapPredictionToAnalysis(home, away, prediction) {
+  const homeScore = Number(prediction.homeScore);
+  const awayScore = Number(prediction.awayScore);
+  const confidence = Number(prediction.confidence);
+  const reasoning = prediction.reasoning || '';
+  const keyPlayer = prediction.keyPlayer || 'Key midfielder — tempo control.';
+
+  return {
+    h2h: reasoning.toUpperCase(),
+    form: `${home.toUpperCase()} VS ${away.toUpperCase()} — AI MODEL CONFIDENCE ${confidence}%.`,
+    keyPlayer: keyPlayer.toUpperCase(),
+    predictedScore: `${homeScore} - ${awayScore}`,
+    predictedHome: homeScore,
+    predictedAway: awayScore,
+    confidence: String(confidence),
+    provider: prediction.provider || 'gemini',
+  };
+}
+
+async function fetchLiveAnalysis(home, away) {
+  const url = `/api/prediction/${encodeURIComponent(home)}/${encodeURIComponent(away)}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (!res.ok || !data?.prediction) {
+    throw new Error(data?.error || 'Prediction API failed');
+  }
+  return mapPredictionToAnalysis(home, away, data.prediction);
+}
 
 export default function AIAgent({ matchId, homeTeam, awayTeam, onSelectPrediction, autoStart = false }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [status, setStatus] = useState('idle'); // 'idle' | 'thinking' | 'typing' | 'done'
   const [autoMode, setAutoMode] = useState(autoStart);
-  
+  const [analysis, setAnalysis] = useState(() => getFallbackAnalysis(homeTeam || 'TEAM A', awayTeam || 'TEAM B'));
+
   const [logs, setLogs] = useState([]);
   const [currentLogIndex, setCurrentLogIndex] = useState(0);
   const [charIndex, setCharIndex] = useState(0);
   const [spinnerChar, setSpinnerChar] = useState('/');
-  
+
   const consoleBottomRef = useRef(null);
+  const terminalRef = useRef(null);
 
   const home = homeTeam || 'TEAM A';
   const away = awayTeam || 'TEAM B';
-  const analysis = getAnalysis(home, away);
 
   // Risk Rating calculation
   const confidenceNum = Number(analysis.confidence);
@@ -129,10 +160,17 @@ export default function AIAgent({ matchId, homeTeam, awayTeam, onSelectPredictio
     return () => clearInterval(interval);
   }, [status]);
 
-  // Auto scroll
+  // Auto-scroll only the internal terminal container.
+  // Avoid scrollIntoView() because it can pull the whole page while logs stream.
   useEffect(() => {
-    if (consoleBottomRef.current) {
-      consoleBottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (!terminalRef.current) return;
+    const terminal = terminalRef.current;
+    const nearBottom =
+      terminal.scrollHeight - terminal.scrollTop - terminal.clientHeight < 80;
+
+    // Keep sticky-to-bottom behavior while user is reading live output near the bottom.
+    if (nearBottom || status === 'thinking' || status === 'typing') {
+      terminal.scrollTop = terminal.scrollHeight;
     }
   }, [logs, charIndex, status]);
 
@@ -145,7 +183,7 @@ export default function AIAgent({ matchId, homeTeam, awayTeam, onSelectPredictio
 
   const steps = [
     { type: 'sys', text: `[SYSTEM] INITIALIZING PREDICTION AGENT FOR MATCH ID: #${matchId}...` },
-    { type: 'sys', text: `[SYSTEM] RETRIEVING ORACLE POOL STATISTICS...` },
+    { type: 'sys', text: `[SYSTEM] CONNECTING GEMINI CO-PILOT (${analysis.provider || 'gemini'})...` },
     { type: 'agent', text: `[AGENT] FETCHING HISTORICAL H2H DATA...` },
     { type: 'data', text: `[H2H] ${analysis.h2h}` },
     { type: 'agent', text: `[AGENT] ANALYZING TEAM FORM STATISTICS...` },
@@ -154,7 +192,7 @@ export default function AIAgent({ matchId, homeTeam, awayTeam, onSelectPredictio
     { type: 'data', text: `[IMPACT] ${analysis.keyPlayer}` },
     { type: 'agent', text: `[AGENT] RE-EVALUATING UPSET PROBABILITY...` },
     { type: 'data', text: `[RISK] UPSET PROBABILITY ASSESSED AS ${riskLabel} RISK.` },
-    { type: 'result', text: `[RESULT] ${home.toUpperCase()} ${analysis.predictedScore} ${away.toUpperCase()} (CONFIDENCE: ${analysis.confidence}%)` }
+    { type: 'result', text: `[RESULT] ${home.toUpperCase()} ${analysis.predictedScore} ${away.toUpperCase()} (CONFIDENCE: ${analysis.confidence}%)` },
   ];
 
   // Typewriter effect controller
@@ -183,15 +221,23 @@ export default function AIAgent({ matchId, homeTeam, awayTeam, onSelectPredictio
     return () => clearInterval(interval);
   }, [status, currentLogIndex, charIndex]);
 
-  const handleStartSimulation = () => {
+  const handleStartSimulation = async () => {
     setStatus('thinking');
     setLogs([]);
     setCurrentLogIndex(0);
     setCharIndex(0);
 
+    try {
+      const live = await fetchLiveAnalysis(home, away);
+      setAnalysis(live);
+    } catch (err) {
+      console.warn('[AIAgent] Live prediction failed, using fallback:', err.message);
+      setAnalysis(getFallbackAnalysis(home, away));
+    }
+
     setTimeout(() => {
       setStatus('typing');
-    }, 1800);
+    }, 600);
   };
 
   const getTimestamp = () => {
@@ -285,6 +331,7 @@ export default function AIAgent({ matchId, homeTeam, awayTeam, onSelectPredictio
           {(status === 'thinking' || status === 'typing' || status === 'done') && (
             <div 
               className="terminal-console"
+              ref={terminalRef}
               style={{
                 maxHeight: 280,
                 overflowY: 'auto',

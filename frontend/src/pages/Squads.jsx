@@ -1,14 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { CONTRACT_ADDRESS, CONTRACT_ABI, parseContractError } from '../config/contract';
+import { CONTRACT_ADDRESS, CONTRACT_ABI, parseContractError, checkDemoMode } from '../config/contract';
+import { TARGET_CHAIN_ID } from '../config/wagmi';
 import { formatEther } from 'viem';
+import toast from 'react-hot-toast';
+import { useSearchParams } from 'react-router-dom';
+import { trackTransaction } from '../utils/txLedger';
 
 export default function Squads() {
-  const isDemo = window.location.search.includes('demo=true');
-  const { address: realAddress, isConnected: realIsConnected } = useAccount();
+  const isDemo = checkDemoMode();
+  const { address: realAddress, isConnected: realIsConnected, chain } = useAccount();
   const isConnected = isDemo ? true : realIsConnected;
   const address = isDemo ? (realAddress || '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266') : realAddress;
+  const isWrongChain = !chain || chain.id !== TARGET_CHAIN_ID;
 
+  const [searchParams] = useSearchParams();
   const [squadName, setSquadName] = useState('');
   const [joinSquadId, setJoinSquadId] = useState('');
   const [squads, setSquads] = useState([]);
@@ -68,6 +74,13 @@ export default function Squads() {
   }, [onChainSquads, isDemo]);
 
   useEffect(() => {
+    const joinParam = searchParams.get('join');
+    if (joinParam) {
+      setJoinSquadId(joinParam);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     if (userOnChainSquad !== undefined && !isDemo) {
       setUserSquadId(Number(userOnChainSquad));
     }
@@ -92,6 +105,11 @@ export default function Squads() {
       return;
     }
 
+    if (isWrongChain && !isDemo) {
+      setErrorMsg('Please switch your wallet network to X Layer Testnet first.');
+      return;
+    }
+
     if (!squadName.trim()) {
       setErrorMsg('Squad name cannot be empty.');
       return;
@@ -109,12 +127,13 @@ export default function Squads() {
     }
 
     try {
-      await writeContractAsync({
+      const txHash = await writeContractAsync({
         address: CONTRACT_ADDRESS,
         abi: CONTRACT_ABI,
         functionName: 'createSquad',
         args: [squadName],
       });
+      trackTransaction({ hash: txHash, action: `Create Squad ${squadName}`, category: 'main' });
     } catch (err) {
       setErrorMsg(parseContractError(err, 'Failed to create squad.'));
     }
@@ -127,6 +146,11 @@ export default function Squads() {
 
     if (!isConnected) {
       setErrorMsg('Please connect your wallet to join a squad.');
+      return;
+    }
+
+    if (isWrongChain && !isDemo) {
+      setErrorMsg('Please switch your wallet network to X Layer Testnet first.');
       return;
     }
 
@@ -144,12 +168,13 @@ export default function Squads() {
     }
 
     try {
-      await writeContractAsync({
+      const txHash = await writeContractAsync({
         address: CONTRACT_ADDRESS,
         abi: CONTRACT_ABI,
         functionName: 'joinSquad',
         args: [BigInt(sId)],
       });
+      trackTransaction({ hash: txHash, action: `Join Squad #${sId}`, category: 'main' });
     } catch (err) {
       setErrorMsg(parseContractError(err, 'Failed to join squad.'));
     }
@@ -306,17 +331,30 @@ export default function Squads() {
                 You are currently representing Squad #{userSquadId}. Your predictions and winnings contribute to this squad's leaderboard ranking.
               </p>
             </div>
-            <button 
-              onClick={() => {
-                const tweetText = encodeURIComponent(
-                  `🏟️ I just joined Squad #${userSquadId} on @MatchStake! Staking OKB together on @XLayerOfficial. Join us! #WorldCup2026 #MatchStake`
-                );
-                window.open(`https://twitter.com/intent/tweet?text=${tweetText}`, '_blank');
-              }}
-              className="btn btn-secondary"
-            >
-              SHARE SQUAD REPRESENTATION
-            </button>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <button 
+                onClick={() => {
+                  const inviteLink = `${window.location.origin}/squads?join=${userSquadId}`;
+                  navigator.clipboard.writeText(`Hey! Join my World Cup staking squad on MatchStake! Squad ID: #${userSquadId}. Join link: ${inviteLink}`);
+                  toast.success('Squad invite link copied to clipboard! 📋');
+                }}
+                className="btn btn-primary"
+                style={{ background: 'var(--gold)', color: '#000', borderColor: 'var(--gold)' }}
+              >
+                COPY INVITE DETAILS 📋
+              </button>
+              <button 
+                onClick={() => {
+                  const tweetText = encodeURIComponent(
+                    `🏟️ I just joined Squad #${userSquadId} on @MatchStake! Staking OKB together on @XLayerOfficial. Join us! #WorldCup2026 #MatchStake`
+                  );
+                  window.open(`https://twitter.com/intent/tweet?text=${tweetText}`, '_blank');
+                }}
+                className="btn btn-secondary"
+              >
+                SHARE ON TWITTER
+              </button>
+            </div>
           </div>
         )}
 

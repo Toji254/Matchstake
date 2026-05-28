@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useReadContract } from 'wagmi';
 import { formatEther } from 'viem';
-import { CONTRACT_ADDRESS, CONTRACT_ABI } from '../config/contract';
+import { CONTRACT_ADDRESS, CONTRACT_ABI, checkDemoMode } from '../config/contract';
 
 const RANK_ICONS = ['01', '02', '03'];
 
@@ -14,7 +14,7 @@ function formatAddress(addr) {
 }
 
 export default function Leaderboard() {
-  const isDemo = window.location.search.includes('demo=true');
+  const isDemo = checkDemoMode();
 
   const { data: topPlayers, isLoading, isError } = useReadContract({
     address: CONTRACT_ADDRESS,
