@@ -1,5 +1,12 @@
 # MatchStake — OKX X Cup Hackathon Submission
 
+> ## 🎬 Live Demo Video
+> **▶️ [Watch the Full Demo Walkthrough on YouTube](https://youtu.be/6hF3FH14Pwk)**
+>
+> A complete end-to-end demonstration of MatchStake running on OKX X Layer Testnet — covering wallet connection, AI Co-Pilot match analysis, on-chain room creation & staking, OKX DEX swap integration, dynamic prediction NFT minting, and the Fan Liquidity Hook in action.
+
+---
+
 **MatchStake** is a decentralized, social watch party staking protocol for the FIFA World Cup 2026, built exclusively on the **OKX X Layer** network. Featuring a premium monochrome sci-fi editorial aesthetic, MatchStake combines real-time group chat rooms, dynamic live-updating prediction NFTs, and an on-device AI Co-Pilot, designed to integrate with OKX's upcoming **Exchange OS** and **Onchain OS** alongside a custom **Uniswap v4 Hook** architecture.
 
 ---
