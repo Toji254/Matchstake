@@ -130,8 +130,8 @@ The project includes unified execution scripts to run both EVM hardhat deploymen
 Create your environment credentials for contracts:
 ```bash
 # Clone the repository
-git clone https://github.com/lowkey/matchstake.git
-cd matchstake
+git clone https://github.com/Toji254/Matchstake.git
+cd Matchstake
 
 # Set your private key inside contracts/.env
 cp contracts/.env.example contracts/.env
