@@ -3,6 +3,8 @@
 > **Portfolio snapshot:** A full-stack Web3 product combining Solidity/Uniswap v4 hooks, X Layer, wallet flows, DEX integration, prediction NFTs, group staking, and an AI Co-Pilot.
 >
 > **Evidence:** the repository includes an end-to-end demo walkthrough and documents the on-chain/testing surface used for the hackathon build.
+>
+> **🏁 Hackathon build:** Built and submitted for the **OKX X Cup Hackathon 2026**, with a focus on X Layer, Exchange OS, Onchain OS, Solidity/Uniswap v4 hooks, and agentic Web3 UX.
 
 > ## 🎬 Live Demo Video
 > **▶️ [Watch the Full Demo Walkthrough on YouTube](https://youtu.be/6hF3FH14Pwk)**
