@@ -1,10 +1,12 @@
 # MatchStake — OKX X Cup Hackathon Submission
 
-> **Portfolio snapshot:** A full-stack Web3 product combining Solidity/Uniswap v4 hooks, X Layer, wallet flows, DEX integration, prediction NFTs, group staking, and an AI Co-Pilot.
+> **portfolio:** bc product combining sc/uniswap v4 hooks, x layer, dex flows, prediction nfts, group staking, and an ai co-pilot.
 >
-> **Evidence:** the repository includes an end-to-end demo walkthrough and documents the on-chain/testing surface used for the hackathon build.
+> **tags:** `bc | sc | defi | ai | x layer | uniswap v4 | okx`
 >
-> **🏁 Hackathon build:** Built and submitted for the **OKX X Cup Hackathon 2026**, with a focus on X Layer, Exchange OS, Onchain OS, Solidity/Uniswap v4 hooks, and agentic Web3 UX.
+> **evidence:** the repo includes an end-to-end demo walkthrough and documents the on-chain/testing surface used for the hackathon build.
+>
+> **🏁 hackathon build:** built + submitted for the **okx x cup hackathon 2026**, focused on x layer, exchange os, onchain os, sc/uniswap v4 hooks, and agentic web3 ux.
 
 > ## 🎬 Live Demo Video
 > **▶️ [Watch the Full Demo Walkthrough on YouTube](https://youtu.be/6hF3FH14Pwk)**
